@@ -1,6 +1,8 @@
 import { MapPin, RefreshCw, Search, Star } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { forkJoin } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { destinationsApi, toursApi, type Destination, type Tour } from '@/lib/api';
 import { useApiResource } from '@/hooks/useApiResource';
 import { formatDuration } from '@/lib/format';
@@ -18,16 +20,19 @@ export function ExplorePage() {
   const [category, setCategory] = useState<Category>('All');
   const [query, setQuery] = useState('');
 
-  const { data, status, retry } = useApiResource(async () => {
-    const [toursPage, destinationsPage] = await Promise.all([
-      toursApi.listTours({ limit: 20 }),
-      destinationsApi.listDestinations(1, 50),
-    ]);
-    const destinationsById = new Map<string, Destination>(
-      destinationsPage.results.map((d) => [d.id, d]),
-    );
-    return { tours: toursPage.results, destinationsById };
-  });
+  const { data, status, retry } = useApiResource(() =>
+    forkJoin({
+      toursPage: toursApi.listTours$({ limit: 20 }),
+      destinationsPage: destinationsApi.listDestinations$(1, 50),
+    }).pipe(
+      map(({ toursPage, destinationsPage }) => ({
+        tours: toursPage.results,
+        destinationsById: new Map<string, Destination>(
+          destinationsPage.results.map((d) => [d.id, d]),
+        ),
+      })),
+    ),
+  );
 
   const filteredTours = useMemo(() => {
     if (!data) return [];

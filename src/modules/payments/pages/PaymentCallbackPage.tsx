@@ -1,5 +1,6 @@
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { throwError } from 'rxjs';
 import { paymentsApi } from '@/lib/api';
 import { useApiResource } from '@/hooks/useApiResource';
 import { ROUTES } from '@/lib/routes';
@@ -14,8 +15,8 @@ export function PaymentCallbackPage() {
   const reference = params.get('reference') ?? params.get('trxref');
 
   const { status } = useApiResource(() => {
-    if (!reference) throw new Error('Missing payment reference');
-    return paymentsApi.verifyPayment(reference);
+    if (!reference) return throwError(() => new Error('Missing payment reference'));
+    return paymentsApi.verifyPayment$(reference);
   });
 
   return (

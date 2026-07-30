@@ -385,16 +385,83 @@ the mobile styles verified extensively earlier in the session should
 still hold. Worth an actual phone or a working responsive-resize check
 to be sure.
 
+### API layer rewritten as Observables (RxJS)
+
+User asked to implement the API integration as Observables instead of
+Promises. Installed `rxjs` and rewrote the whole `src/lib/api/` layer plus
+every call site:
+
+- `client.ts`: `apiRequest$()` (RxJS convention — trailing `$` marks
+  anything that returns an `Observable`, since forgetting to `subscribe()`
+  silently does nothing, unlike a Promise which runs eagerly). Built on
+  `fromFetch` from `rxjs/fetch` rather than wrapping `fetch()` in `from()`
+  — `fromFetch` ties into an `AbortController` so unsubscribing (component
+  unmount, or a fresh `retry()` firing while a previous request is still
+  in flight) actually cancels the underlying network request. That's a
+  real capability gap Promises have vs. Observables, so it's worth
+  actually using rather than just changing the type signature.
+  The envelope-unwrapping and 401-refresh-and-retry logic (previously a
+  `try/catch` + a `let refreshInFlight: Promise | null` cache) became
+  `switchMap`/`catchError`/`shareReplay(1)` — `shareReplay(1)` coordinates
+  concurrent 401s into the one in-flight refresh call the same way the
+  old Promise cache did, just expressed as a shared stream.
+- All seven domain modules (`auth.ts`, `users.ts`, `destinations.ts`,
+  `tours.ts`, `bookings.ts`, `payments.ts`, `reviews.ts`) renamed every
+  exported function with the `$` suffix and changed return types from
+  `Promise<T>` to `Observable<T>` (e.g. `login` → `login$`,
+  `listTours` → `listTours$`).
+- `useApiResource` (the shared fetch-with-retry hook) now subscribes
+  instead of chaining `.then()/.catch()`, and actually uses the
+  cancellation capability above: it tracks the current `Subscription` in a
+  ref and unsubscribes on unmount *and* at the start of every `retry()`,
+  so a slow stale request can't overwrite fresher state — something the
+  Promise version had no way to express. `useCurrentUser` got the same
+  subscribe-with-cleanup treatment.
+- Every page that called the API directly (not through `useApiResource`)
+  converted from `async/await` + `try/catch/finally` to `.subscribe({
+  next, error })`: `LoginPage`, `RegisterPage` (chains `register$` →
+  optional `updateMe$` via `switchMap`, swallowing the phone-update
+  failure with `catchError(() => of(null))`, matching the original
+  best-effort semantics), `TourDetailPage`'s `handleBookNow`,
+  `BookingDetailPage`'s `handlePay`/`handleVerify` (the latter uses
+  `finalize()` for the "always call retry() when done, success or not"
+  behavior the old `finally` block had). Places that fetched from two
+  endpoints at once switched from `Promise.all` to `forkJoin`
+  (`ExplorePage`), and `TourDetailPage`'s slug → tour → {departures,
+  destination} chain became `switchMap` into a `forkJoin`.
+
+Verified the full rewrite end-to-end in the browser on a fresh account
+(register → Home greeting → Explore → Tour Detail → select a departure →
+Book Now → real booking `TUR-2026-0005` → **Pay with Paystack actually
+worked this time**, redirecting to a genuine Paystack test-mode checkout
+page for the right amount and customer email. Did not enter any payment
+details or complete the transaction — just confirmed the redirect and
+closed it. This means the earlier `POST /payments/initiate` 500 was
+likely intermittent rather than a hard backend bug; updated the comment
+in `payments.ts` accordingly, though it's worth keeping an eye on.
+
+One pre-existing gap noticed during this testing, **not** caused by this
+refactor: after registering via in-app navigation (no full page reload),
+`TopNav`'s user chip kept showing "Log in" instead of the new user's name
+— because `useCurrentUser` only fetches once per mount, and `TopNav`
+(part of `AppLayout`) doesn't unmount across route changes within the
+app. A fresh page load picks up the tokens correctly. Fixing this needs
+some form of shared auth state (context, or a tiny store) so every
+`useCurrentUser()` instance reflects the same login state — not done
+here since it's out of scope for "implement the API as Observables," but
+worth doing before this matters for real users.
+
 ### Next up
 
-- Once `POST /payments/initiate` is fixed backend-side, confirm the real
-  response shape and correct `InitiatePaymentResult` if needed.
 - Continue through Bookings list, Profile/Loyalty, and the four unbacked
   modules (Flights, Hotels, Food, Emergency), fetching each screen from
   Figma as we reach it.
 - Confirm the mobile breakpoint still renders correctly now that md:/lg:
   overrides exist, once viewport resizing is reliable (or on a real
   device).
+- Consider shared auth state (context/store) so login/register updates
+  are reflected everywhere without a full page reload — see the TopNav
+  gap noted above.
 
 ---
 

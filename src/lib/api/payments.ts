@@ -1,20 +1,21 @@
-import { apiRequest } from './client';
+import type { Observable } from 'rxjs';
+import { apiRequest$ } from './client';
 import type { InitiatePaymentInput } from './types';
 
-// Shape inferred from Paystack's typical initialize-transaction response —
-// not yet verified against a real booking (would require creating and
-// paying for a real booking to observe). Confirm once the booking flow is
-// wired up end to end.
+// Verified against a real response (booking TUR-2026-0005): authorizationUrl
+// correctly redirects to a live Paystack test-mode checkout for the right
+// amount/customer. The earlier 500 (see docs/DEVELOPMENT_LOG.md) appears to
+// have been intermittent rather than a hard bug -- worth keeping an eye on.
 export interface InitiatePaymentResult {
   authorizationUrl: string;
   reference: string;
   accessCode?: string;
 }
 
-export function initiatePayment(input: InitiatePaymentInput): Promise<InitiatePaymentResult> {
-  return apiRequest<InitiatePaymentResult>('/payments/initiate', { method: 'POST', body: input });
+export function initiatePayment$(input: InitiatePaymentInput): Observable<InitiatePaymentResult> {
+  return apiRequest$<InitiatePaymentResult>('/payments/initiate', { method: 'POST', body: input });
 }
 
-export function verifyPayment(reference: string): Promise<unknown> {
-  return apiRequest(`/payments/${reference}/verify`);
+export function verifyPayment$(reference: string): Observable<unknown> {
+  return apiRequest$(`/payments/${reference}/verify`);
 }

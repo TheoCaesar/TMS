@@ -1,54 +1,46 @@
-import { apiRequest } from './client';
+import { Observable, of } from 'rxjs';
+import { catchError, map, tap } from 'rxjs/operators';
+import { apiRequest$ } from './client';
 import { clearTokens, getTokens, setTokens } from './tokenStore';
 import type { AuthTokens, LoginInput, RegisterInput } from './types';
 
-export async function register(input: RegisterInput): Promise<AuthTokens> {
-  const tokens = await apiRequest<AuthTokens>('/auth/register', {
-    method: 'POST',
-    body: input,
-    auth: false,
-  });
-  setTokens(tokens);
-  return tokens;
+export function register$(input: RegisterInput): Observable<AuthTokens> {
+  return apiRequest$<AuthTokens>('/auth/register', { method: 'POST', body: input, auth: false }).pipe(
+    tap(setTokens),
+  );
 }
 
-export async function login(input: LoginInput): Promise<AuthTokens> {
-  const tokens = await apiRequest<AuthTokens>('/auth/login', {
-    method: 'POST',
-    body: input,
-    auth: false,
-  });
-  setTokens(tokens);
-  return tokens;
+export function login$(input: LoginInput): Observable<AuthTokens> {
+  return apiRequest$<AuthTokens>('/auth/login', { method: 'POST', body: input, auth: false }).pipe(
+    tap(setTokens),
+  );
 }
 
-export async function forgotPassword(email: string): Promise<void> {
-  await apiRequest<null>('/auth/forgot-password', {
-    method: 'POST',
-    body: { email },
-    auth: false,
-  });
+export function forgotPassword$(email: string): Observable<null> {
+  return apiRequest$<null>('/auth/forgot-password', { method: 'POST', body: { email }, auth: false });
 }
 
-export async function resetPassword(token: string, password: string): Promise<void> {
-  await apiRequest<null>('/auth/reset-password', {
+export function resetPassword$(token: string, password: string): Observable<null> {
+  return apiRequest$<null>('/auth/reset-password', {
     method: 'POST',
     body: { token, password },
     auth: false,
   });
 }
 
-export async function logout(): Promise<void> {
+// Best-effort server-side revocation; local tokens are cleared immediately
+// regardless of whether the network call succeeds.
+export function logout$(): Observable<void> {
   const tokens = getTokens();
   clearTokens();
-  if (!tokens) return;
-  try {
-    await apiRequest<null>('/auth/logout', {
-      method: 'POST',
-      body: { refreshToken: tokens.refreshToken },
-      auth: false,
-    });
-  } catch {
-    // Best-effort server-side revocation; local tokens are already cleared.
-  }
+  if (!tokens) return of(undefined);
+
+  return apiRequest$<null>('/auth/logout', {
+    method: 'POST',
+    body: { refreshToken: tokens.refreshToken },
+    auth: false,
+  }).pipe(
+    map(() => undefined),
+    catchError(() => of(undefined)),
+  );
 }

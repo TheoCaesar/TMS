@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { of } from 'rxjs';
+import { catchError, switchMap } from 'rxjs/operators';
 import { TextField } from '@/components/ui/TextField';
 import { PasswordField } from '@/components/ui/PasswordField';
 import { authApi, usersApi, ApiError } from '@/lib/api';
@@ -18,21 +20,26 @@ export function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    try {
-      await authApi.register({ email, password, fullName });
-      if (phone.trim()) {
-        await usersApi.updateMe({ phone: phone.trim() }).catch(() => {});
-      }
-      navigate(ROUTES.home);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
+    authApi
+      .register$({ email, password, fullName })
+      .pipe(
+        switchMap(() =>
+          phone.trim()
+            ? usersApi.updateMe$({ phone: phone.trim() }).pipe(catchError(() => of(null)))
+            : of(null),
+        ),
+      )
+      .subscribe({
+        next: () => navigate(ROUTES.home),
+        error: (err: unknown) => {
+          setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
+          setSubmitting(false);
+        },
+      });
   }
 
   return (

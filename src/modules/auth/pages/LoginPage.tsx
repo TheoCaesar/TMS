@@ -14,18 +14,17 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    try {
-      await authApi.login({ email, password });
-      navigate(ROUTES.home);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
+    authApi.login$({ email, password }).subscribe({
+      next: () => navigate(ROUTES.home),
+      error: (err: unknown) => {
+        setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
+        setSubmitting(false);
+      },
+    });
   }
 
   return (

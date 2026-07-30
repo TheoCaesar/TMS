@@ -34,7 +34,7 @@ function timeOfDayGreeting(): string {
 export function HomePage() {
   const { user } = useCurrentUser();
   const { data: destinationsPage, status: destinationsStatus, retry } = useApiResource(() =>
-    destinationsApi.listDestinations(1, 10),
+    destinationsApi.listDestinations$(1, 10),
   );
   const destinations = destinationsPage?.results ?? [];
 

@@ -1,6 +1,8 @@
 import { CheckCircle2, Clock, RefreshCw, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { throwError } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 import { ApiError, bookingsApi, paymentsApi } from '@/lib/api';
 import { useApiResource } from '@/hooks/useApiResource';
 import { formatMoney } from '@/lib/format';
@@ -18,35 +20,37 @@ export function BookingDetailPage() {
   const [verifying, setVerifying] = useState(false);
 
   const { data: bookingResource, status, retry } = useApiResource(() => {
-    if (!reference) throw new Error('Missing booking reference');
-    return bookingsApi.getBooking(reference);
+    if (!reference) return throwError(() => new Error('Missing booking reference'));
+    return bookingsApi.getBooking$(reference);
   });
 
-  async function handlePay() {
+  function handlePay() {
     if (!reference) return;
     setPaying(true);
     setPayError(null);
-    try {
-      const result = await paymentsApi.initiatePayment({ bookingReference: reference });
-      window.location.href = result.authorizationUrl;
-    } catch (err) {
-      setPayError(err instanceof ApiError ? err.message : 'Could not start payment.');
-      setPaying(false);
-    }
+    paymentsApi.initiatePayment$({ bookingReference: reference }).subscribe({
+      next: (result) => {
+        window.location.href = result.authorizationUrl;
+      },
+      error: (err: unknown) => {
+        setPayError(err instanceof ApiError ? err.message : 'Could not start payment.');
+        setPaying(false);
+      },
+    });
   }
 
-  async function handleVerify() {
+  function handleVerify() {
     if (!reference) return;
     setVerifying(true);
-    try {
-      await paymentsApi.verifyPayment(reference);
-    } catch {
-      // Verify is best-effort here; refetching the booking below is the
-      // real source of truth regardless of whether this call succeeded.
-    } finally {
-      setVerifying(false);
-      retry();
-    }
+    paymentsApi
+      .verifyPayment$(reference)
+      .pipe(finalize(() => setVerifying(false)))
+      .subscribe({
+        // Verify is best-effort here; refetching the booking below is the
+        // real source of truth regardless of whether this call succeeded.
+        next: retry,
+        error: retry,
+      });
   }
 
   if (status === 'loading') {

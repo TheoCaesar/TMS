@@ -1,3 +1,6 @@
+import { Observable, of, throwError } from 'rxjs';
+import { catchError, finalize, shareReplay, switchMap } from 'rxjs/operators';
+import { fromFetch } from 'rxjs/fetch';
 import type { ApiEnvelope, AuthTokens } from './types';
 import { clearTokens, getTokens, setTokens } from './tokenStore';
 
@@ -43,7 +46,12 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
   return url.toString();
 }
 
-async function rawRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+// Every HTTP call as a cold Observable: nothing hits the network until
+// something subscribes, and unsubscribing (e.g. a component unmounting
+// mid-request) aborts the underlying fetch via fromFetch's AbortController
+// integration — a real advantage over a Promise, which can't be cancelled
+// once started.
+function rawRequest$<T>(path: string, options: RequestOptions = {}): Observable<T> {
   const { method = 'GET', body, auth = true, query } = options;
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
@@ -52,53 +60,67 @@ async function rawRequest<T>(path: string, options: RequestOptions = {}): Promis
     if (tokens) headers.Authorization = `Bearer ${tokens.accessToken}`;
   }
 
-  const response = await fetch(buildUrl(path, query), {
+  return fromFetch(buildUrl(path, query), {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-
-  const envelope = (await response.json()) as ApiEnvelope<T>;
-  if (!response.ok) {
-    throw new ApiError(envelope.code ?? response.status, envelope.message ?? response.statusText);
-  }
-  return envelope.data;
+  }).pipe(
+    switchMap((response) =>
+      (response.json() as Promise<ApiEnvelope<T>>).then((envelope) => ({ response, envelope })),
+    ),
+    switchMap(({ response, envelope }) =>
+      response.ok
+        ? of(envelope.data)
+        : throwError(
+            () => new ApiError(envelope.code ?? response.status, envelope.message ?? response.statusText),
+          ),
+    ),
+  );
 }
 
-let refreshInFlight: Promise<AuthTokens> | null = null;
+// Coordinates concurrent 401s into a single in-flight refresh call —
+// shareReplay(1) multicasts the one HTTP request's result to every
+// subscriber that arrives while it's pending, mirroring the old
+// Promise-based "refreshInFlight" cache but expressed as a shared stream.
+let refresh$: Observable<AuthTokens> | null = null;
 
-async function refreshTokens(): Promise<AuthTokens> {
+function refreshTokens$(): Observable<AuthTokens> {
   const current = getTokens();
-  if (!current) throw new ApiError(401, 'Not authenticated');
+  if (!current) return throwError(() => new ApiError(401, 'Not authenticated'));
 
-  if (!refreshInFlight) {
-    refreshInFlight = rawRequest<AuthTokens>('/auth/refresh', {
+  if (!refresh$) {
+    refresh$ = rawRequest$<AuthTokens>('/auth/refresh', {
       method: 'POST',
       body: { refreshToken: current.refreshToken },
       auth: false,
-    }).finally(() => {
-      refreshInFlight = null;
-    });
+    }).pipe(
+      switchMap((tokens) => {
+        setTokens(tokens);
+        return of(tokens);
+      }),
+      finalize(() => {
+        refresh$ = null;
+      }),
+      shareReplay(1),
+    );
   }
-  const tokens = await refreshInFlight;
-  setTokens(tokens);
-  return tokens;
+  return refresh$;
 }
 
-// Wraps rawRequest with one-shot access-token refresh on a 401.
-export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  try {
-    return await rawRequest<T>(path, options);
-  } catch (err) {
-    if (err instanceof ApiError && err.code === 401 && options.auth !== false && getTokens()) {
-      try {
-        await refreshTokens();
-      } catch {
-        clearTokens();
-        throw err;
+// Wraps rawRequest$ with one-shot access-token refresh-and-retry on a 401.
+export function apiRequest$<T>(path: string, options: RequestOptions = {}): Observable<T> {
+  return rawRequest$<T>(path, options).pipe(
+    catchError((err: unknown) => {
+      if (err instanceof ApiError && err.code === 401 && options.auth !== false && getTokens()) {
+        return refreshTokens$().pipe(
+          catchError(() => {
+            clearTokens();
+            return throwError(() => err);
+          }),
+          switchMap(() => rawRequest$<T>(path, options)),
+        );
       }
-      return rawRequest<T>(path, options);
-    }
-    throw err;
-  }
+      return throwError(() => err);
+    }),
+  );
 }

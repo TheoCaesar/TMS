@@ -1,6 +1,8 @@
 import { ChevronLeft, Minus, Plus, RefreshCw, MapPin, Star, Users } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { forkJoin, of, throwError } from 'rxjs';
+import { catchError, switchMap } from 'rxjs/operators';
 import { bookingsApi, destinationsApi, getTokens, toursApi, ApiError, type Departure } from '@/lib/api';
 import { useApiResource } from '@/hooks/useApiResource';
 import { formatDate, formatDuration, formatMoney, formatTime } from '@/lib/format';
@@ -18,14 +20,19 @@ export function TourDetailPage() {
   const [booking, setBooking] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
-  const { data, status, retry } = useApiResource(async () => {
-    if (!slug) throw new Error('Missing tour slug');
-    const tour = await toursApi.getTourBySlug(slug);
-    const [departures, destination] = await Promise.all([
-      toursApi.listDepartures(tour.id),
-      destinationsApi.getDestination(tour.destinationId).catch(() => null),
-    ]);
-    return { tour, departures, destination };
+  const { data, status, retry } = useApiResource(() => {
+    if (!slug) return throwError(() => new Error('Missing tour slug'));
+    return toursApi.getTourBySlug$(slug).pipe(
+      switchMap((tour) =>
+        forkJoin({
+          tour: of(tour),
+          departures: toursApi.listDepartures$(tour.id),
+          destination: destinationsApi
+            .getDestination$(tour.destinationId)
+            .pipe(catchError(() => of(null))),
+        }),
+      ),
+    );
   });
 
   if (status === 'loading') {
@@ -62,7 +69,7 @@ export function TourDetailPage() {
     setBookingError(null);
   }
 
-  async function handleBookNow() {
+  function handleBookNow() {
     if (!selectedDeparture) return;
     if (!getTokens()) {
       navigate(ROUTES.auth.login);
@@ -70,17 +77,13 @@ export function TourDetailPage() {
     }
     setBooking(true);
     setBookingError(null);
-    try {
-      const created = await bookingsApi.createBooking({
-        departureId: selectedDeparture.id,
-        seats,
-      });
-      navigate(`${ROUTES.bookings}/${created.reference}`);
-    } catch (err) {
-      setBookingError(err instanceof ApiError ? err.message : 'Could not create booking.');
-    } finally {
-      setBooking(false);
-    }
+    bookingsApi.createBooking$({ departureId: selectedDeparture.id, seats }).subscribe({
+      next: (created) => navigate(`${ROUTES.bookings}/${created.reference}`),
+      error: (err: unknown) => {
+        setBookingError(err instanceof ApiError ? err.message : 'Could not create booking.');
+        setBooking(false);
+      },
+    });
   }
 
   return (

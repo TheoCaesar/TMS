@@ -10,11 +10,17 @@ export function useCurrentUser() {
       setLoading(false);
       return;
     }
-    usersApi
-      .getMe()
-      .then(setUser)
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
+    const subscription = usersApi.getMe$().subscribe({
+      next: (profile) => {
+        setUser(profile);
+        setLoading(false);
+      },
+      error: () => {
+        setUser(null);
+        setLoading(false);
+      },
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   return { user, loading };
