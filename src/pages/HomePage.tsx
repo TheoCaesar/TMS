@@ -42,28 +42,28 @@ export function HomePage() {
 
   return (
     <div>
-      <header className="px-5 pt-6 pb-4">
-        <h1 className="text-2xl font-bold text-ink-900 dark:text-white">
+      <header className="px-5 pt-6 pb-4 md:px-8 md:pt-10">
+        <h1 className="text-2xl font-bold text-ink-900 dark:text-white md:text-3xl">
           {timeOfDayGreeting()}
           {firstName ? `, ${firstName}` : ''} 👋
         </h1>
       </header>
 
-      <div className="px-5">
-        <div className="flex items-center gap-2 rounded-2xl bg-neutral-100 px-4 py-3 text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
+      <div className="px-5 md:px-8">
+        <div className="flex items-center gap-2 rounded-2xl bg-neutral-100 px-4 py-3 text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400 md:max-w-lg">
           <Search className="size-5" />
           <span className="text-sm">Where do you want to go?</span>
         </div>
       </div>
 
-      <section className="px-5 pt-6">
+      <section className="px-5 pt-6 md:px-8">
         <h2 className="mb-3 text-lg font-bold text-ink-900 dark:text-white">Quick Access</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3 md:grid-cols-6 md:gap-4">
           {quickAccess.map(({ to, label, icon: Icon, danger }) => (
             <Link
               key={to}
               to={to}
-              className="flex flex-col items-center justify-center gap-2 rounded-card border border-neutral-100 bg-white py-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+              className="flex flex-col items-center justify-center gap-2 rounded-card border border-neutral-100 bg-white py-5 shadow-sm transition hover:border-brand-200 dark:border-neutral-800 dark:bg-neutral-900"
             >
               <Icon className={`size-6 ${danger ? 'text-danger-500' : 'text-brand-600'}`} />
               <span
@@ -77,11 +77,11 @@ export function HomePage() {
       </section>
 
       <section className="pt-6">
-        <h2 className="mb-3 px-5 text-lg font-bold text-ink-900 dark:text-white">
+        <h2 className="mb-3 px-5 text-lg font-bold text-ink-900 dark:text-white md:px-8">
           Featured Destinations
         </h2>
         {destinationsStatus === 'error' ? (
-          <div className="ml-5 mr-20 flex items-center justify-between rounded-card border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
+          <div className="ml-5 mr-20 flex items-center justify-between rounded-card border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400 md:mx-8">
             <span>Couldn't load destinations.</span>
             <button
               type="button"
@@ -92,21 +92,21 @@ export function HomePage() {
             </button>
           </div>
         ) : (
-          <div className="flex gap-3 overflow-x-auto px-5 pb-2">
+          <div className="flex gap-3 overflow-x-auto px-5 pb-2 md:grid md:grid-cols-3 md:overflow-visible md:px-8 lg:grid-cols-4">
             {destinationsStatus === 'loading'
               ? Array.from({ length: 3 }, (_, i) => (
                   <div
                     key={i}
-                    className="h-[152px] w-40 shrink-0 animate-pulse rounded-card bg-neutral-100 dark:bg-neutral-900"
+                    className="h-[152px] w-40 shrink-0 animate-pulse rounded-card bg-neutral-100 dark:bg-neutral-900 md:h-44 md:w-auto"
                   />
                 ))
               : destinations.map((destination) => (
                   <Link
                     key={destination.id}
                     to={ROUTES.explore}
-                    className="w-40 shrink-0 overflow-hidden rounded-card bg-neutral-100 dark:bg-neutral-900"
+                    className="w-40 shrink-0 overflow-hidden rounded-card bg-neutral-100 transition hover:opacity-90 dark:bg-neutral-900 md:w-auto md:shrink"
                   >
-                    <div className="flex h-28 items-center justify-center bg-gradient-to-br from-brand-100 to-brand-50 text-brand-600 dark:from-neutral-800 dark:to-neutral-900">
+                    <div className="flex h-28 items-center justify-center bg-gradient-to-br from-brand-100 to-brand-50 text-brand-600 dark:from-neutral-800 dark:to-neutral-900 md:h-32">
                       {destination.heroImageUrl ? (
                         <img
                           src={destination.heroImageUrl}

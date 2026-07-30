@@ -19,7 +19,7 @@ export function PaymentCallbackPage() {
   });
 
   return (
-    <div className="flex flex-col items-center gap-4 px-5 py-16 text-center">
+    <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-5 py-16 text-center">
       {status === 'loading' && (
         <p className="text-sm text-neutral-500 dark:text-neutral-400">Confirming your payment…</p>
       )}

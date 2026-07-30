@@ -1,19 +1,11 @@
-import { Briefcase, Calendar, Compass, Home as HomeIcon, User } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import { ROUTES } from '@/lib/routes';
+import { navTabs } from './navTabs';
 
-const tabs = [
-  { to: ROUTES.home, label: 'Home', icon: HomeIcon, end: true },
-  { to: ROUTES.explore, label: 'Explore', icon: Compass },
-  { to: ROUTES.trips, label: 'My Trips', icon: Briefcase },
-  { to: ROUTES.bookings, label: 'Bookings', icon: Calendar },
-  { to: ROUTES.profile, label: 'Profile', icon: User },
-];
-
+// Mobile only (<md) — tablet/desktop use TopNav instead.
 export function BottomNav() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 flex items-stretch border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950">
-      {tabs.map(({ to, label, icon: Icon, end }) => (
+    <nav className="fixed inset-x-0 bottom-0 z-20 flex items-stretch border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 md:hidden">
+      {navTabs.map(({ to, label, icon: Icon, end }) => (
         <NavLink
           key={to}
           to={to}

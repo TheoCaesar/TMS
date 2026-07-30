@@ -29,7 +29,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="px-5 pt-6 pb-10">
+    <div className="px-5 pt-6 pb-10 md:mx-auto md:max-w-md md:pt-16">
       <h1 className="mb-6 text-2xl font-bold text-ink-900 dark:text-white">Log In</h1>
 
       <form onSubmit={handleSubmit}>

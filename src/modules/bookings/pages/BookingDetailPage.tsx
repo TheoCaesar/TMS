@@ -75,7 +75,7 @@ export function BookingDetailPage() {
   const booking = bookingResource;
 
   return (
-    <div className="px-5 py-6">
+    <div className="px-5 py-6 md:mx-auto md:max-w-md md:py-12">
       <div className="mb-5 flex flex-col items-center text-center">
         {booking.status === 'CONFIRMED' || booking.status === 'COMPLETED' ? (
           <CheckCircle2 className="mb-2 size-12 text-brand-600" />

@@ -39,8 +39,8 @@ export function ExplorePage() {
 
   return (
     <div>
-      <header className="px-5 pt-6 pb-4">
-        <div className="flex items-center gap-2 rounded-2xl bg-neutral-100 px-4 py-3 text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
+      <header className="px-5 pt-6 pb-4 md:px-8 md:pt-10">
+        <div className="flex items-center gap-2 rounded-2xl bg-neutral-100 px-4 py-3 text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400 md:max-w-lg">
           <Search className="size-5" />
           <input
             value={query}
@@ -51,7 +51,7 @@ export function ExplorePage() {
         </div>
       </header>
 
-      <div className="flex gap-2 overflow-x-auto px-5 pb-4">
+      <div className="flex gap-2 overflow-x-auto px-5 pb-4 md:px-8">
         {categories.map((c) => (
           <button
             key={c}
@@ -68,11 +68,11 @@ export function ExplorePage() {
         ))}
       </div>
 
-      <div className="mx-5 mb-6 flex h-32 items-center justify-center rounded-card bg-neutral-100 text-sm text-neutral-400 dark:bg-neutral-900">
+      <div className="mx-5 mb-6 flex h-32 items-center justify-center rounded-card bg-neutral-100 text-sm text-neutral-400 dark:bg-neutral-900 md:mx-8 md:h-48">
         Map View
       </div>
 
-      <section className="px-5">
+      <section className="px-5 md:px-8">
         <div className="mb-3 flex items-baseline justify-between">
           <h2 className="text-lg font-bold text-ink-900 dark:text-white">Nearby Places</h2>
           {status === 'ready' && (
@@ -94,7 +94,7 @@ export function ExplorePage() {
         )}
 
         {status === 'loading' && (
-          <div className="space-y-3">
+          <div className="space-y-3 md:grid md:grid-cols-2 md:gap-3 md:space-y-0 lg:grid-cols-3">
             {Array.from({ length: 3 }, (_, i) => (
               <div
                 key={i}
@@ -111,7 +111,7 @@ export function ExplorePage() {
         )}
 
         {status === 'ready' && category === 'All' && (
-          <div className="space-y-3 pb-4">
+          <div className="space-y-3 pb-4 md:grid md:grid-cols-2 md:gap-3 md:space-y-0 lg:grid-cols-3">
             {filteredTours.map((tour) => {
               const destination = data?.destinationsById.get(tour.destinationId);
               return (

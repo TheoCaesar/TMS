@@ -345,6 +345,46 @@ fixable from the frontend alone.
   user/backend team; the frontend code path is otherwise complete and
   ready as soon as that endpoint works.
 
+### Tablet/desktop responsive pass
+
+The app was mobile-first by design from session 1 (`AppLayout` was a
+fixed `max-w-md` column at every screen size) — this session extends it
+with `md:`/`lg:` breakpoints, since there's no Figma desktop design to
+follow:
+
+- `AppLayout`: container grows `max-w-md` → `md:max-w-3xl` →
+  `lg:max-w-6xl`. New `TopNav` (`md:block`, hidden on mobile) replaces
+  `BottomNav` (now `md:hidden`) — same 5 destinations, shared via new
+  `navTabs.ts` instead of duplicated. `SosButton` also becomes `md:hidden`
+  since `TopNav` has a persistent "Emergency" link covering the same
+  FR-EMRG-08 requirement without a redundant floating button on wider
+  screens; the `transform-gpu` fixed-positioning-container trick from
+  session 1 keeps everything anchored to this column's actual width at
+  any breakpoint, including page-level fixed bars like the booking bar.
+- `HomePage` / `ExplorePage`: Quick Access grid goes `grid-cols-3` →
+  `md:grid-cols-6` (all 6 tiles fit one row). Featured Destinations and
+  the Explore results list switch from mobile horizontal-scroll/stacked
+  to `md:grid` (`md:grid-cols-2/3` → `lg:grid-cols-3/4`).
+- Form/detail pages (`LoginPage`, `RegisterPage`, `TransportBookingPage`,
+  `TourDetailPage`, `BookingDetailPage`, `PaymentCallbackPage`) get a
+  `md:max-w-*` cap instead of stretching full-width — full-bleed layouts
+  only make sense for the grid-based browse screens.
+
+**Verification gap, worth knowing about**: the browser automation's
+`resize_window` tool did not actually change the tab's rendering
+viewport in this environment — `window.innerWidth` stayed fixed (~1020px)
+across every resize request from 375px to 1440px, confirmed via
+`window.matchMedia`/`innerWidth` checks, not just visual inspection. So
+desktop/tablet (`md`/`lg`) rendering was visually confirmed in the
+browser; true mobile (<768px) rendering was **not** re-confirmed
+visually after adding the responsive classes. Confidence there instead
+comes from a code diff review: every change this pass was a strictly
+additive `md:`/`lg:`-prefixed class alongside the existing unprefixed
+(mobile) classes — no base/mobile-tier class was removed or altered — so
+the mobile styles verified extensively earlier in the session should
+still hold. Worth an actual phone or a working responsive-resize check
+to be sure.
+
 ### Next up
 
 - Once `POST /payments/initiate` is fixed backend-side, confirm the real
@@ -352,6 +392,9 @@ fixable from the frontend alone.
 - Continue through Bookings list, Profile/Loyalty, and the four unbacked
   modules (Flights, Hotels, Food, Emergency), fetching each screen from
   Figma as we reach it.
+- Confirm the mobile breakpoint still renders correctly now that md:/lg:
+  overrides exist, once viewport resizing is reliable (or on a real
+  device).
 
 ---
 

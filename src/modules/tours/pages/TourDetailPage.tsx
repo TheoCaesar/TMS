@@ -84,8 +84,8 @@ export function TourDetailPage() {
   }
 
   return (
-    <div className={selectedDeparture ? 'pb-24' : undefined}>
-      <div className="relative flex h-56 items-center justify-center bg-gradient-to-br from-brand-100 to-brand-50 text-brand-600 dark:from-neutral-800 dark:to-neutral-950">
+    <div className={`md:mx-auto md:max-w-2xl ${selectedDeparture ? 'pb-24' : ''}`}>
+      <div className="relative flex h-56 items-center justify-center overflow-hidden bg-gradient-to-br from-brand-100 to-brand-50 text-brand-600 dark:from-neutral-800 dark:to-neutral-950 md:mt-6 md:h-72 md:rounded-card">
         {tour.heroImageUrl ? (
           <img src={tour.heroImageUrl} alt={tour.title} className="size-full object-cover" />
         ) : (
@@ -196,7 +196,7 @@ export function TourDetailPage() {
       </div>
 
       {selectedDeparture && (
-        <div className="fixed inset-x-0 bottom-[72px] flex items-center justify-between border-t border-neutral-100 bg-white py-3 pl-5 pr-20 dark:border-neutral-800 dark:bg-neutral-950">
+        <div className="fixed inset-x-0 bottom-[72px] mx-auto flex max-w-md items-center justify-between border-t border-neutral-100 bg-white py-3 pl-5 pr-20 dark:border-neutral-800 dark:bg-neutral-950 md:max-w-2xl md:bottom-0 md:pr-8">
           <div>
             <div className="text-xs text-neutral-500 dark:text-neutral-400">Total</div>
             <div className="text-lg font-bold text-ink-900 dark:text-white">

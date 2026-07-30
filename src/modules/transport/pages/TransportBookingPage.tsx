@@ -12,8 +12,8 @@ export function TransportBookingPage() {
   const [when, setWhen] = useState<'now' | 'schedule'>('now');
 
   return (
-    <div>
-      <header className="px-5 pt-6 pb-4">
+    <div className="md:mx-auto md:max-w-xl">
+      <header className="px-5 pt-6 pb-4 md:pt-10">
         <h1 className="text-2xl font-bold text-ink-900 dark:text-white">Local Transport</h1>
       </header>
 
