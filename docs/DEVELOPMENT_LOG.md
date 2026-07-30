@@ -225,11 +225,32 @@ Agreed approach with the user: keep trying the live prototype for each
 remaining screen as we build that module; if it hangs again, ask for a
 screenshot of that specific screen instead of retrying indefinitely.
 
+### CORS blocker (important — needs a backend fix)
+
+While wiring the Home screen's "Featured Destinations" to real
+`GET /destinations` data, requests failed in-browser with a generic
+`TypeError: Failed to fetch`, even though the exact same request via
+`curl` succeeded instantly. Confirmed with `curl -D -` and an `Origin`
+header set: **the API sends no `Access-Control-Allow-Origin` header at
+all**. This isn't a flaky-backend issue (that was a separate, real thing
+observed earlier — 503s during a cold start) — it's a hard CORS
+misconfiguration that blocks **every** browser-based caller, not just this
+dev server. No frontend, on any origin, can call this API directly from
+JS in a browser until the backend sends proper CORS headers (e.g., in
+Nest: `app.enableCors({ origin: [...allowed frontend origins], credentials: true })`).
+
+Interim workaround for local development only: `vite.config.ts` now
+proxies `/api/*` to the live backend server-to-server (no CORS enforcement
+between servers), and `src/lib/api/client.ts` defaults to a relative
+`API_BASE_URL` in dev so requests go through that proxy. **This does not
+fix the production build** — once deployed, the frontend will hit the same
+`Failed to fetch` wall unless the backend adds real CORS headers, or a
+production reverse proxy is put in front of both frontend and API on the
+same origin. Flagging this for the user to fix backend-side; not something
+fixable from the frontend alone.
+
 ### Next up
 
-- Rebuild the Home screen to match Figma (greeting, search, Quick Access
-  grid, Featured Destinations pulling real `GET /destinations` data,
-  bottom nav, floating SOS button).
 - Rebuild Local Transport to match Figma (UI only, no mock data).
 - Continue through Explore/Tours list, Tour detail + booking + payment
   flow, Bookings list, Profile/Loyalty, and the four unbacked modules

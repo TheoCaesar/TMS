@@ -1,8 +1,14 @@
 import type { ApiEnvelope, AuthTokens } from './types';
 import { clearTokens, getTokens, setTokens } from './tokenStore';
 
+// The live API sends no CORS headers (see docs/DEVELOPMENT_LOG.md, "CORS
+// blocker"), so in dev we default to a relative URL and let the Vite proxy
+// (vite.config.ts) forward it server-to-server. Production has no such
+// proxy, so it needs either VITE_API_BASE_URL set to a same-origin path
+// behind a real reverse proxy, or the backend to start sending CORS headers.
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? 'https://tms-api-m7yf.onrender.com';
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.DEV ? '' : 'https://tms-api-m7yf.onrender.com');
 
 const API_PREFIX = '/api/v1';
 
@@ -24,7 +30,11 @@ interface RequestOptions {
 }
 
 function buildUrl(path: string, query?: RequestOptions['query']): string {
-  const url = new URL(`${API_PREFIX}${path}`, API_BASE_URL);
+  // new URL() requires an absolute base; fall back to the page's own
+  // origin so an empty API_BASE_URL resolves to a same-origin request
+  // (picked up by the Vite dev proxy) instead of throwing.
+  const base = API_BASE_URL || window.location.origin;
+  const url = new URL(`${API_PREFIX}${path}`, base);
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined) url.searchParams.set(key, String(value));

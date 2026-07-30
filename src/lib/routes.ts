@@ -1,15 +1,19 @@
-// Central route path registry — keep in sync with src/App.tsx route definitions.
+// Central route path registry — keep in sync with src/App.tsx route definitions
+// and the bottom tab bar (src/components/layout/BottomNav.tsx). Naming follows
+// the Figma prototype's own labels (Explore, Hotels, My Trips, ...).
 export const ROUTES = {
   home: '/',
-  poi: '/explore',
+  explore: '/explore',
   flights: '/flights',
-  accommodation: '/stays',
+  hotels: '/hotels',
   food: '/food',
   transport: '/transport',
   emergency: '/emergency',
+  trips: '/trips',
+  bookings: '/bookings',
+  profile: '/profile',
   auth: {
     login: '/login',
     register: '/register',
   },
-  payments: '/payments',
 } as const;

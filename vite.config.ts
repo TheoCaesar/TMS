@@ -11,4 +11,17 @@ export default defineConfig({
       '@': path.resolve(import.meta.dirname, './src'),
     },
   },
+  server: {
+    // The live API (see .env.example) sends no CORS headers, so the
+    // browser can't call it directly in dev. Proxying server-to-server
+    // here sidesteps that for local development only — it does NOT fix
+    // the underlying issue for the production build. See
+    // docs/DEVELOPMENT_LOG.md ("CORS blocker") for details.
+    proxy: {
+      '/api': {
+        target: 'https://tms-api-m7yf.onrender.com',
+        changeOrigin: true,
+      },
+    },
+  },
 })
