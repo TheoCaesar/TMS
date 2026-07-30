@@ -465,4 +465,69 @@ worth doing before this matters for real users.
 
 ---
 
+## Session 3 — 2026-07-30: My Trips built from a user-supplied screenshot
+
+### Nav mapping clarified
+
+User pasted a screenshot titled "My Bookings" (tabs: Upcoming/Completed/
+Cancelled; booking cards with icon, title, status badge, date, ref,
+View/Cancel/Download actions). Its bottom nav showed **"My Trips" as the
+active tab**, not "Bookings" — asked the user to confirm since that
+conflicts with the two-separate-tabs assumption from session 2's Figma
+capture. Confirmed: this screen **is** `/trips`. `/bookings` (the
+Calendar-icon tab) remains an unresolved placeholder — no evidence yet of
+what it's meant to show separately, not touched this session.
+
+### Built `src/pages/TripsPage.tsx`
+
+Real data via `GET /bookings/me`. Notable adaptations from the Figma mock
+to what the live API actually provides:
+
+- The API only has one bookable entity (Tours), so every booking here is
+  a tour booking — unlike Figma's per-type mock (hotel/flight/local-
+  transport with different accent colors), there's no real data for
+  those other types. Every card uses the same brand-teal accent/icon
+  rather than fabricating categories that don't exist.
+- `Booking` only has `departureId`, not a tour title, so the fetcher
+  cross-references every tour's departures (`GET /tours/{id}/departures`
+  for each tour from `GET /tours`) to build a `departureId -> title` map.
+  Fine at the current tiny seed-data scale (a handful of tours); would
+  need a real join (or the API adding tour info to the booking response)
+  if the catalogue grows — noted in a code comment.
+- Figma's third per-card action (a download icon, presumably for a
+  ticket/receipt) was **omitted** — there's no receipt-generation
+  endpoint to back it, and unlike Cancel (wired to the real
+  `POST /bookings/{reference}/cancel`), a button that visually promises a
+  download and does nothing felt worse than not having it.
+- Upcoming/Completed/Cancelled tabs filter client-side over the full
+  fetched list (`PENDING`/`CONFIRMED` → Upcoming, `COMPLETED` → Completed,
+  `CANCELLED` → Cancelled) — the API's `listMyBookings$` only accepts one
+  status filter at a time, not the two statuses "Upcoming" needs.
+
+### New backend finding: `GET /bookings/me` appears to be broken, not just an edge case
+
+Session 2 noted this endpoint 500s for a **fresh account with zero
+bookings** and guessed it was an empty-list edge case. Testing
+`TripsPage` against the `claude.rxjs.test@example.com` account — which
+has a real booking (`TUR-2026-0005`) — it **still 500s**. Reproduced
+directly with `curl` too (logged in as that account, hit
+`GET /bookings/me` with a valid token): same 500. So this isn't specific
+to empty lists — the endpoint looks broken more generally. Couldn't
+visually verify the booking-card rendering against real data because of
+this; the error/retry state renders correctly (confirmed), but the
+happy-path card layout is unverified until the backend fixes this.
+Flagging for the user/backend team, same as the payments findings.
+
+### Next up
+
+- Once `GET /bookings/me` works, verify `TripsPage`'s card rendering
+  against real data (currently only the error state has been visually
+  confirmed).
+- Figure out what `/bookings` (Calendar tab) is meant to show, if
+  anything distinct from `/trips` — no Figma evidence yet.
+- Continue through Profile/Loyalty and the four unbacked modules
+  (Flights, Hotels, Food, Emergency) as screenshots/Figma come in.
+
+---
+
 <!-- Append new dated sessions below this line as work continues. -->
