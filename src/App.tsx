@@ -4,7 +4,8 @@ import { HomePage } from '@/pages/HomePage';
 import { TripsPage } from '@/pages/TripsPage';
 import { BookingsPage } from '@/pages/BookingsPage';
 import { ProfilePage } from '@/pages/ProfilePage';
-import { PoiExplorePage } from '@/modules/poi/pages/PoiExplorePage';
+import { ExplorePage } from '@/modules/tours/pages/ExplorePage';
+import { TourDetailPage } from '@/modules/tours/pages/TourDetailPage';
 import { FlightSearchPage } from '@/modules/flights/pages/FlightSearchPage';
 import { AccommodationSearchPage } from '@/modules/accommodation/pages/AccommodationSearchPage';
 import { FoodDiscoverPage } from '@/modules/food/pages/FoodDiscoverPage';
@@ -19,7 +20,8 @@ function App() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path={ROUTES.home} element={<HomePage />} />
-        <Route path={ROUTES.explore} element={<PoiExplorePage />} />
+        <Route path={ROUTES.explore} element={<ExplorePage />} />
+        <Route path={`${ROUTES.explore}/:slug`} element={<TourDetailPage />} />
         <Route path={ROUTES.flights} element={<FlightSearchPage />} />
         <Route path={ROUTES.hotels} element={<AccommodationSearchPage />} />
         <Route path={ROUTES.food} element={<FoodDiscoverPage />} />

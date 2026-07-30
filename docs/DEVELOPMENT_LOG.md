@@ -249,13 +249,48 @@ production reverse proxy is put in front of both frontend and API on the
 same origin. Flagging this for the user to fix backend-side; not something
 fixable from the frontend alone.
 
+### Local Transport and Explore built
+
+- **Local Transport** (`src/modules/transport/pages/TransportBookingPage.tsx`)
+  rebuilt to match the captured Figma screenshot: Taxi/Car Hire/Shuttle/Bus
+  segmented tabs, pickup/destination fields, Now/Schedule toggle. UI only,
+  no mock ride/fare data (no backend for this module).
+- **Explore** — captured from the live prototype via
+  `preview-route=%2Fexplore` (succeeded on retry after an earlier hang):
+  search bar, All/Attractions/Restaurants/Hotels category pills, a "Map
+  View" placeholder (Figma's own version is a placeholder too, not a real
+  map), and a "Nearby Places" list (photo, name, category · distance,
+  star rating).
+
+  The live API has no generic POI concept — only bookable Tours. Moved
+  this out of the misleadingly-named `src/modules/poi/` (deleted) into
+  `src/modules/tours/`, and wired the results list to real
+  `GET /tours` + `GET /destinations` data reusing Figma's card layout
+  (image, title, destination · duration, rating — "New" shown instead of
+  a fake 0.0 when `ratingCount` is 0). The category pills stay visually
+  present to match Figma, but only "All" is populated — Attractions/
+  Restaurants/Hotels show an honest "nothing here yet" state rather than
+  fabricated results, consistent with the earlier "no mock data" decision
+  extended to this partially-backed screen. Client-side search filters
+  the already-fetched tours by title.
+
+  Added `src/modules/tours/pages/TourDetailPage.tsx` (linked from each
+  Explore card) so the flow doesn't dead-end: real tour title/description/
+  price (formatted from `priceMinor` + `currency`)/duration/rating plus
+  its upcoming departures (`GET /tours/{id}/departures`) with seats left.
+  Booking against a departure isn't wired up yet.
+
+  New `src/lib/format.ts` (`formatMoney`, `formatDuration`, `formatDate`,
+  `formatTime`) — first reuse across two screens, extracted rather than
+  duplicated.
+
 ### Next up
 
-- Rebuild Local Transport to match Figma (UI only, no mock data).
-- Continue through Explore/Tours list, Tour detail + booking + payment
-  flow, Bookings list, Profile/Loyalty, and the four unbacked modules
-  (Flights, Hotels, Food, Emergency), fetching each screen from Figma as
-  we reach it.
+- Wire the booking flow from Tour Detail (create booking -> initiate
+  payment) once we've seen the Figma screens for it.
+- Continue through Bookings list, Profile/Loyalty, and the four unbacked
+  modules (Flights, Hotels, Food, Emergency), fetching each screen from
+  Figma as we reach it.
 
 ---
 
