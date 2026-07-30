@@ -1,6 +1,94 @@
-import { PlaceholderPage } from '@/components/ui/PlaceholderPage';
+import { useState, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { TextField } from '@/components/ui/TextField';
+import { PasswordField } from '@/components/ui/PasswordField';
+import { authApi, usersApi, ApiError } from '@/lib/api';
+import { ROUTES } from '@/lib/routes';
 
-// SRS 3.1 — User Authentication and Profile Management (FR-AUTH-01 to 08)
+// Matches the Figma "Create Account" screen (Full Name / Email / Phone /
+// Password). The live API's RegisterDto only accepts email/password/
+// fullName — phone isn't a registration field there — so phone is saved
+// with a follow-up PATCH /users/me after a successful register.
 export function RegisterPage() {
-  return <PlaceholderPage title="Create account" description="Register as a Tourist or Service Provider." />;
+  const navigate = useNavigate();
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await authApi.register({ email, password, fullName });
+      if (phone.trim()) {
+        await usersApi.updateMe({ phone: phone.trim() }).catch(() => {});
+      }
+      navigate(ROUTES.home);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="px-5 pt-6 pb-10">
+      <h1 className="mb-6 text-2xl font-bold text-ink-900 dark:text-white">Create Account</h1>
+
+      <form onSubmit={handleSubmit}>
+        <TextField
+          label="Full Name"
+          placeholder="Enter your full name"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          required
+          minLength={2}
+        />
+        <TextField
+          label="Email"
+          type="email"
+          placeholder="Enter your email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <TextField
+          label="Phone"
+          type="tel"
+          placeholder="Enter your phone number"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+        <PasswordField
+          label="Password"
+          placeholder="Create a password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={8}
+        />
+
+        {error && <p className="mb-4 text-sm text-danger-500">{error}</p>}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+        >
+          {submitting ? 'Creating account…' : 'Create Account'}
+        </button>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
+        Already have an account?{' '}
+        <Link to={ROUTES.auth.login} className="font-medium text-brand-600 dark:text-brand-500">
+          Log in
+        </Link>
+      </p>
+    </div>
+  );
 }
