@@ -13,6 +13,8 @@ import { TransportBookingPage } from '@/modules/transport/pages/TransportBooking
 import { EmergencyPage } from '@/modules/emergency/pages/EmergencyPage';
 import { LoginPage } from '@/modules/auth/pages/LoginPage';
 import { RegisterPage } from '@/modules/auth/pages/RegisterPage';
+import { BookingDetailPage } from '@/modules/bookings/pages/BookingDetailPage';
+import { PaymentCallbackPage } from '@/modules/payments/pages/PaymentCallbackPage';
 import { ROUTES } from '@/lib/routes';
 
 function App() {
@@ -29,9 +31,11 @@ function App() {
         <Route path={ROUTES.emergency} element={<EmergencyPage />} />
         <Route path={ROUTES.trips} element={<TripsPage />} />
         <Route path={ROUTES.bookings} element={<BookingsPage />} />
+        <Route path={`${ROUTES.bookings}/:reference`} element={<BookingDetailPage />} />
         <Route path={ROUTES.profile} element={<ProfilePage />} />
         <Route path={ROUTES.auth.login} element={<LoginPage />} />
         <Route path={ROUTES.auth.register} element={<RegisterPage />} />
+        <Route path={ROUTES.paymentCallback} element={<PaymentCallbackPage />} />
       </Route>
     </Routes>
   );

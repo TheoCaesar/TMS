@@ -284,10 +284,71 @@ fixable from the frontend alone.
   `formatTime`) — first reuse across two screens, extracted rather than
   duplicated.
 
+### Auth, booking, and payment flow
+
+- **Login/Register**: Register matches a captured Figma screen ("Create
+  Account" — Full Name/Email/Phone/Password). Login has no Figma capture;
+  styled consistently. New shared `TextField`/`PasswordField` components
+  (the latter with a show/hide toggle). `RegisterDto` doesn't accept phone
+  at registration, so phone is saved with a follow-up `PATCH /users/me`.
+  Verified end-to-end: register -> redirect to Home -> authenticated
+  greeting shows the new user's name.
+
+- **Booking flow**: checked the live Figma prototype for a booking screen
+  first (clicked into a POI detail page — "Cape Coast Castle" — and
+  scrollbar-dragged to the true bottom, since mouse-wheel scroll doesn't
+  reach that iframe reliably). Found no booking/purchase UI at all: the
+  POI detail page's only CTAs are **Navigate** and **Save to Wishlist**.
+  This confirms Figma's Explore/POI flow is discovery-only, matching the
+  SRS's POI module — booking only exists as a concept for the API's
+  separate Tour entity, which has no Figma screen. Designed the booking UI
+  myself, consistent with the established Voyago design tokens (not
+  invented from scratch): `TourDetailPage` departures are now selectable,
+  with a seat stepper (capped at `seatsLeft` and the API's max of 20) and
+  a sticky bottom bar showing the computed total that appears once a
+  departure is picked. Booking as a signed-out user redirects to Login
+  first.
+
+  New `BookingDetailPage` (`/bookings/:reference`) — reached right after
+  booking, and reusable later from a Bookings list: shows seats/total/
+  status, and for a `PENDING` booking, a "Pay with Paystack" button plus
+  a manual "I've already paid — check status" fallback (see below for why
+  the fallback matters).
+
+  New `PaymentCallbackPage` (`/payments/callback`) for when Paystack
+  redirects back — reads `reference` or `trxref` from the query string and
+  calls `GET /payments/{reference}/verify`. **This route is a best guess**:
+  `InitiatePaymentDto` has no field for a callback URL, so the backend
+  must have one hardcoded server-side (typical Paystack setup), and we
+  don't know if it points here. That's exactly why `BookingDetailPage`
+  also has the manual verify fallback — it doesn't depend on the redirect
+  landing in the right place.
+
+  Verified real booking creation end-to-end in the browser: selected a
+  departure on the Cape Coast Castle Heritage Tour, booked 1 seat, landed
+  on `BookingDetailPage` showing a real reference (`TUR-2026-0004`),
+  correct total (GHS 80.00), status `PENDING`.
+
+  **Payment initiation is broken server-side.** Clicking "Pay with
+  Paystack" got `500 Internal server error` from `POST /payments/initiate`.
+  Reproduced outside the app too: logged in as the booking's actual owner
+  via `curl` and hit the same endpoint directly — same 500. (A first
+  attempt with a different test account correctly got `403 Not permitted
+  to view this booking`, confirming booking ownership is enforced properly
+  — the 500 only happens for the rightful owner, i.e. on the actual code
+  path.) This is very likely a Paystack integration/config issue on the
+  backend (missing or invalid secret key, or a bug in that handler) — not
+  fixable from the frontend. The `InitiatePaymentResult` type in
+  `src/lib/api/payments.ts` therefore remains **unverified** — inferred
+  from Paystack's typical response shape, still unconfirmed against a real
+  response, since the endpoint currently never succeeds. Flagging for the
+  user/backend team; the frontend code path is otherwise complete and
+  ready as soon as that endpoint works.
+
 ### Next up
 
-- Wire the booking flow from Tour Detail (create booking -> initiate
-  payment) once we've seen the Figma screens for it.
+- Once `POST /payments/initiate` is fixed backend-side, confirm the real
+  response shape and correct `InitiatePaymentResult` if needed.
 - Continue through Bookings list, Profile/Loyalty, and the four unbacked
   modules (Flights, Hotels, Food, Emergency), fetching each screen from
   Figma as we reach it.

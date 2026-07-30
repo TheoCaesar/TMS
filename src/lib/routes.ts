@@ -16,4 +16,5 @@ export const ROUTES = {
     login: '/login',
     register: '/register',
   },
+  paymentCallback: '/payments/callback',
 } as const;
