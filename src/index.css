@@ -1,10 +1,33 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens sampled from the Voyago Figma prototype
+ * (figma.com/make/DbokKeXxurSiFhZQSQ8aJH). Approximate — refine against
+ * live computed styles once the prototype preview is reachable again.
+ */
 @theme {
   --font-sans: system-ui, "Segoe UI", Roboto, sans-serif;
+
+  --color-brand-50: #ecfaf3;
+  --color-brand-100: #d1f2e2;
+  --color-brand-500: #1f9d6b;
+  --color-brand-600: #16805a;
+  --color-brand-700: #146648;
+
+  --color-ink-900: #14213d;
+  --color-ink-700: #2c3652;
+
+  --color-accent-500: #f5a623;
+  --color-danger-500: #e3413a;
+  --color-danger-600: #cc2f29;
+
+  --color-app-bg: #f6f7fb;
+
+  --radius-card: 1.25rem;
 }
 
 body {
   margin: 0;
   color-scheme: light dark;
+  background: var(--color-app-bg);
 }
