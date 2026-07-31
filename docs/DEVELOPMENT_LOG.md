@@ -774,4 +774,37 @@ browser binaries to download. Results:
 Gotcha worth remembering: `waitForLoadState('networkidle')` resolves
 instantly after an SPA client-side navigation, so a first pass captured the
 loading skeleton — which has no text — and made the detail page look empty.
+
+## Session 7 — 2026-07-31: Dropped the dead "Bookings" tab, moved SOS into the nav bar
+
+### Context
+
+The bottom/top nav had two entries for the same thing: "My Trips" (real
+data via `GET /bookings/me`) and "Bookings" (Calendar icon), which had
+always been a `PlaceholderPage` stub, never wired to any endpoint. No Figma
+screen for a distinct "Bookings" view ever turned up — a screenshot titled
+"My Bookings" earlier turned out to just *be* the My Trips screen. The
+backend also has no concept that would support two different tabs here:
+`GET /bookings/:reference` is owner-only and there's no "list all bookings"
+or "join another user's booking" endpoint, so a browse-and-join reading of
+"Bookings" was considered and ruled out as unbuildable, not just unbuilt.
+
+### Decision — intentional Figma deviation
+
+Removed the "Bookings" tab from `navTabs.ts` (and deleted the now-orphaned
+`BookingsPage`/`PlaceholderPage`) and put the SOS button in its old slot in
+`BottomNav.tsx`, raised above the bar with a ring cutout, instead of
+floating over page content (the old `SosButton.tsx`, now deleted). This is
+a deliberate departure from the Figma bottom nav (which has 5 tabs
+including Calendar/Bookings), made with the user's explicit sign-off — not
+something to "fix" back to match Figma later. Rationale: a permanently
+docked center action for a single safety-critical function (FR-EMRG-08 —
+no auth gate, no digging through menus) is a well-established mobile
+pattern and a strictly better use of that slot than a dead duplicate tab.
+Desktop `TopNav` is unaffected — it already had its own persistent
+"Emergency" pill separate from the tab list, and simply loses the
+"Bookings" link since it reads from the same shared `navTabs`.
+
+`/bookings/:reference` (the real `BookingDetailPage`) is untouched — only
+the bare `/bookings` list route is gone.
 Wait on real content instead.

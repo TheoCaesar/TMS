@@ -2,7 +2,6 @@ import { Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { HomePage } from '@/pages/HomePage';
 import { TripsPage } from '@/pages/TripsPage';
-import { BookingsPage } from '@/pages/BookingsPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { PersonalInfoPage } from '@/pages/PersonalInfoPage';
 import { ExplorePage } from '@/modules/tours/pages/ExplorePage';
@@ -41,7 +40,6 @@ function App() {
         <Route path={ROUTES.transportActiveRide} element={<ActiveRidePage />} />
         <Route path={ROUTES.emergency} element={<EmergencyPage />} />
         <Route path={ROUTES.trips} element={<TripsPage />} />
-        <Route path={ROUTES.bookings} element={<BookingsPage />} />
         <Route path={`${ROUTES.bookings}/:reference`} element={<BookingDetailPage />} />
         <Route path={ROUTES.itineraries} element={<ItinerariesPage />} />
         <Route path={`${ROUTES.itineraries}/:id`} element={<ItineraryDetailPage />} />

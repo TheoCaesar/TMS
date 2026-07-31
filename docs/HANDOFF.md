@@ -5,7 +5,7 @@ session, a new person, or future-you). For the full chronological story
 of *why* each decision was made, see [`DEVELOPMENT_LOG.md`](DEVELOPMENT_LOG.md)
 — this file is the "state now," that file is the "how we got here."
 
-**Last updated:** 2026-07-31 (session 6 — AI itineraries + sockets)
+**Last updated:** 2026-07-31 (session 7 — dropped the dead Bookings tab, SOS moved into the nav bar)
 
 ---
 
@@ -88,7 +88,7 @@ Working convention established across every screen so far:
 
 | Route | Status | Notes |
 | --- | --- | --- |
-| `/` (Home) | ✅ Real data | Quick Access grid, Featured Destinations from `GET /destinations` |
+| `/` (Home) | ✅ Real data | Quick Access grid (Emergency removed — reachable via bottom nav SOS/TopNav instead), Featured Destinations from `GET /destinations`, Today's Deals (static design content, no deals backend exists) |
 | `/explore` | ✅ Real data | Tours + Destinations; category pills only "All" populated |
 | `/explore/:slug` (Tour Detail) | ✅ Real data + booking | Full booking flow: select departure → seats → Book Now |
 | `/bookings/:reference` (Booking Detail) | ✅ Real data + payment | Pay with Paystack, manual verify fallback, Cancel booking (with inline confirm) for PENDING/CONFIRMED — verified end-to-end against the live API (PENDING → CANCELLED) |
@@ -108,7 +108,6 @@ Working convention established across every screen so far:
 | `/transport` | ✅ Built from screenshot | Extended to match a fuller "Transport details" screenshot: Estimated Fare, Find a Driver, Available Drivers Nearby. No backend to wire, no mock data beyond the design's own content |
 | `/transport/active-ride` | ✅ Built from screenshot | The design's own "View Active Ride (Demo)" preview screen (matches "find-a-driver" screenshot) — static map illustration, driver card, Chat/Call/Cancel. Cancel navigates back to `/transport`; Chat/Call are inert |
 | `/emergency` | ✅ Built from screenshot | SOS trigger, Quick Actions grid, Nearest Medical Facilities list — matches user-supplied screenshot. UI-only, no backend for this module |
-| `/bookings` (list, Calendar nav tab) | 🟡 Placeholder, unresolved | See "Open questions" — may or may not be a distinct screen from `/trips` |
 
 ## Backend capabilities not yet used by the frontend
 
@@ -252,14 +251,17 @@ endpoint exists to clean them up):
 
 ## Open questions (need the user, not guessable)
 
-- **What is `/bookings` (Calendar-icon nav tab) supposed to show?** A
-  screenshot titled "My Bookings" turned out to actually be the `/trips`
-  screen (confirmed with the user — its own bottom nav highlighted "My
-  Trips"). `/bookings` remains an unresolved placeholder with no Figma
-  evidence of what it's for, if anything distinct.
+- **Resolved (session 7):** the Calendar-icon "Bookings" tab was a dead
+  placeholder duplicating `/trips` (a screenshot titled "My Bookings"
+  turned out to actually be the `/trips` screen), and the backend has no
+  endpoint shape that would make it a distinct feature (no cross-user
+  booking listing, no "join a booking"). Removed the tab; SOS now sits in
+  its old nav slot as a raised center button instead of floating over
+  content — see `DEVELOPMENT_LOG.md` session 7 for the full rationale.
+  This is an intentional, user-approved departure from the Figma bottom
+  nav (which has 5 tabs including Calendar/Bookings).
 - **Figma reference still needed for:** none of the 6 SRS modules — all
-  have at least a built screen now. Remaining open item is `/bookings`
-  (see above).
+  have at least a built screen now.
   Ask the user for screenshots or try the live Figma prototype (see
   below) before designing these from scratch.
 
@@ -302,12 +304,11 @@ because that session was scoped to itineraries + sockets.
 
 1. Build the **Reviews UI** (see bug 4 above) — the API client is already
    written, so this is UI-only work against a working backend.
-2. Resolve the `/bookings` open question above.
-3. Re-test `POST /payments/initiate` and `GET /bookings/me` — if fixed,
+2. Re-test `POST /payments/initiate` and `GET /bookings/me` — if fixed,
    verify `/trips`'s real card rendering (currently unconfirmed) and
    confirm the live `PENDING → CONFIRMED` socket transition end-to-end
    with a real Paystack test checkout.
-4. Fix API-layer bugs 1–3 above.
+3. Fix API-layer bugs 1–3 above.
 
 (Emergency, Flights, Hotels, Food/Drinks, and Transport are all built from
 screenshots already — see the route inventory above. AI Itinerary Planner

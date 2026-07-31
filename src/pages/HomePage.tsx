@@ -1,5 +1,4 @@
 import {
-  AlertCircle,
   Building2,
   Car,
   Compass,
@@ -8,6 +7,7 @@ import {
   RefreshCw,
   Search,
   Sparkles,
+  Tag,
   Utensils,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -17,9 +17,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
 import { Skeleton, SkeletonLine } from '@/components/ui/Skeleton';
 
-// "Plan Trip" (the AI itinerary planner) sits second so that the 7-tile
-// grid's 3/3/1 mobile reflow leaves a lower-priority tile on the orphan
-// row rather than a real feature.
+// Emergency dropped from here — it now lives in the bottom nav's raised
+// SOS button (and TopNav's persistent Emergency link on desktop) instead
+// of sharing this grid, so it's reachable without scrolling past it.
 const quickAccess = [
   { to: ROUTES.explore, label: 'Explore', icon: Compass },
   { to: ROUTES.itineraries, label: 'Plan Trip', icon: Sparkles },
@@ -27,7 +27,26 @@ const quickAccess = [
   { to: ROUTES.hotels, label: 'Hotels', icon: Building2 },
   { to: ROUTES.food, label: 'Food', icon: Utensils },
   { to: ROUTES.transport, label: 'Transport', icon: Car },
-  { to: ROUTES.emergency, label: 'Emergency', icon: AlertCircle, danger: true },
+];
+
+// No backend for a deals/discounts concept — this is the Figma design's
+// own static content (like Explore's category pills), not fabricated
+// data. See docs/HANDOFF.md's "never fabricate mock data" convention.
+const todaysDeals = [
+  { name: 'Labadi Beach Hotel', location: 'Accra, Ghana', price: 'GHS 450', wasPrice: 'GHS 650' },
+  {
+    name: 'Kakum Canopy Walk',
+    location: 'Cape Coast, Ghana',
+    price: 'GHS 120',
+    wasPrice: 'GHS 180',
+  },
+  { name: 'Akwaaba Lodge', location: 'Kumasi, Ghana', price: 'GHS 320', wasPrice: 'GHS 480' },
+  {
+    name: 'Mole Safari Tour',
+    location: 'Mole National Park',
+    price: 'GHS 280',
+    wasPrice: 'GHS 420',
+  },
 ];
 
 function timeOfDayGreeting(): string {
@@ -64,19 +83,15 @@ export function HomePage() {
 
       <section className="px-5 pt-6 md:px-8">
         <h2 className="mb-3 text-lg font-bold text-ink-900 dark:text-white">Quick Access</h2>
-        <div className="grid grid-cols-3 gap-3 md:grid-cols-4 md:gap-4 lg:grid-cols-7">
-          {quickAccess.map(({ to, label, icon: Icon, danger }) => (
+        <div className="grid grid-cols-3 gap-3 md:grid-cols-4 md:gap-4 lg:grid-cols-6">
+          {quickAccess.map(({ to, label, icon: Icon }) => (
             <Link
               key={to}
               to={to}
               className="flex flex-col items-center justify-center gap-2 rounded-card border border-neutral-100 bg-white py-5 shadow-sm transition hover:border-brand-200 dark:border-neutral-800 dark:bg-neutral-900"
             >
-              <Icon className={`size-6 ${danger ? 'text-danger-500' : 'text-brand-600'}`} />
-              <span
-                className={`text-sm font-medium ${danger ? 'text-danger-500' : 'text-ink-900 dark:text-white'}`}
-              >
-                {label}
-              </span>
+              <Icon className="size-6 text-brand-600" />
+              <span className="text-sm font-medium text-ink-900 dark:text-white">{label}</span>
             </Link>
           ))}
         </div>
@@ -146,6 +161,41 @@ export function HomePage() {
                 ))}
           </div>
         )}
+      </section>
+
+      <section className="pt-6 pb-6">
+        <h2 className="mb-3 px-5 text-lg font-bold text-ink-900 dark:text-white md:px-8">
+          Today's Deals
+        </h2>
+        <div className="grid grid-cols-2 gap-3 px-5 md:px-8 lg:grid-cols-4">
+          {todaysDeals.map((deal) => (
+            <div
+              key={deal.name}
+              className="overflow-hidden rounded-card bg-neutral-100 dark:bg-neutral-900"
+            >
+              <div className="relative flex h-28 items-center justify-center bg-gradient-to-br from-brand-100 to-brand-50 text-brand-600 dark:from-neutral-800 dark:to-neutral-900">
+                <MapPin className="size-8" />
+                <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-accent-500 px-2 py-1 text-[10px] font-bold uppercase text-white">
+                  <Tag className="size-3" /> Deal
+                </span>
+              </div>
+              <div className="p-3">
+                <div className="truncate font-semibold text-ink-900 dark:text-white">
+                  {deal.name}
+                </div>
+                <div className="truncate text-xs text-neutral-500 dark:text-neutral-400">
+                  {deal.location}
+                </div>
+                <div className="mt-1 flex items-baseline gap-1.5">
+                  <span className="font-bold text-brand-600 dark:text-brand-500">
+                    {deal.price}
+                  </span>
+                  <span className="text-xs text-neutral-400 line-through">{deal.wasPrice}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );
