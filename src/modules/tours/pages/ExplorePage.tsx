@@ -44,7 +44,7 @@ export function ExplorePage() {
   }, [data, category, query]);
 
   return (
-    <div>
+    <div className="md:mx-auto md:max-w-7xl md:px-0 lg:px-2">
       <header className="px-5 pt-6 pb-4 md:px-8 md:pt-10">
         <div className="flex items-center gap-2 rounded-2xl bg-neutral-100 px-4 py-3 text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400 md:max-w-lg">
           <Search className="size-5" />

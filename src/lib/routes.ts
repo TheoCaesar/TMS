@@ -18,6 +18,8 @@ export const ROUTES = {
   profilePersonalInfo: '/profile/personal-info',
   auth: {
     login: '/login',
+    forgotPassword: '/forgot-password',
+    resetPassword: '/reset-password',
     register: '/register',
   },
   paymentCallback: '/payments/callback',

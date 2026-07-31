@@ -17,6 +17,8 @@ import { ActiveRidePage } from '@/modules/transport/pages/ActiveRidePage';
 import { EmergencyPage } from '@/modules/emergency/pages/EmergencyPage';
 import { LoginPage } from '@/modules/auth/pages/LoginPage';
 import { RegisterPage } from '@/modules/auth/pages/RegisterPage';
+import { ForgotPasswordPage } from '@/modules/auth/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/modules/auth/pages/ResetPasswordPage';
 import { BookingDetailPage } from '@/modules/bookings/pages/BookingDetailPage';
 import { ItinerariesPage } from '@/modules/itineraries/pages/ItinerariesPage';
 import { ItineraryDetailPage } from '@/modules/itineraries/pages/ItineraryDetailPage';
@@ -47,6 +49,8 @@ function App() {
         <Route path={ROUTES.profilePersonalInfo} element={<PersonalInfoPage />} />
         <Route path={ROUTES.auth.login} element={<LoginPage />} />
         <Route path={ROUTES.auth.register} element={<RegisterPage />} />
+        <Route path={ROUTES.auth.forgotPassword} element={<ForgotPasswordPage />} />
+        <Route path={ROUTES.auth.resetPassword} element={<ResetPasswordPage />} />
         <Route path={ROUTES.paymentCallback} element={<PaymentCallbackPage />} />
       </Route>
     </Routes>

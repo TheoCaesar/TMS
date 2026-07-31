@@ -23,30 +23,38 @@ function TabLink({ to, label, icon: Icon, end }: (typeof navTabs)[number]) {
 // the tab bar's old "Bookings" slot (see navTabs.ts) rather than floating
 // over page content — an intentional Figma deviation for a safety-critical,
 // always-reachable action (FR-EMRG-08), noted in DEVELOPMENT_LOG.md.
+//
+// Pinned to the *viewport*, so it stays put through any amount of scrolling.
+// The bar itself spans the full width (it reads as a native app tab bar);
+// the inner wrapper keeps the tabs aligned to the same `max-w-md` column the
+// page content uses. Don't reintroduce a transform on an ancestor — that
+// makes `fixed` resolve against the ancestor and the bar scrolls away.
 export function BottomNav() {
   const half = Math.ceil(navTabs.length / 2);
   const leftTabs = navTabs.slice(0, half);
   const rightTabs = navTabs.slice(half);
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 flex items-stretch border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 md:hidden">
-      {leftTabs.map((tab) => (
-        <TabLink key={tab.to} {...tab} />
-      ))}
+    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 md:hidden">
+      <div className="mx-auto flex max-w-md items-stretch">
+        {leftTabs.map((tab) => (
+          <TabLink key={tab.to} {...tab} />
+        ))}
 
-      <div className="flex flex-1 items-center justify-center">
-        <NavLink
-          to={ROUTES.emergency}
-          aria-label="Emergency SOS"
-          className="-mt-7 flex size-16 items-center justify-center rounded-full bg-danger-500 text-xs font-bold text-white shadow-lg shadow-danger-500/30 ring-4 ring-white transition hover:bg-danger-600 dark:ring-neutral-950"
-        >
-          SOS
-        </NavLink>
+        <div className="flex flex-1 items-center justify-center">
+          <NavLink
+            to={ROUTES.emergency}
+            aria-label="Emergency SOS"
+            className="-mt-7 flex size-16 items-center justify-center rounded-full bg-danger-500 text-xs font-bold text-white shadow-lg shadow-danger-500/30 ring-4 ring-white transition hover:bg-danger-600 dark:ring-neutral-950"
+          >
+            SOS
+          </NavLink>
+        </div>
+
+        {rightTabs.map((tab) => (
+          <TabLink key={tab.to} {...tab} />
+        ))}
       </div>
-
-      {rightTabs.map((tab) => (
-        <TabLink key={tab.to} {...tab} />
-      ))}
     </nav>
   );
 }

@@ -55,6 +55,15 @@ export function LoginPage() {
           required
         />
 
+        <div className="mb-4 -mt-1 text-right">
+          <Link
+            to={ROUTES.auth.forgotPassword}
+            className="text-sm font-medium text-brand-600 dark:text-brand-500"
+          >
+            Forgot password?
+          </Link>
+        </div>
+
         {error && <p className="mb-4 text-sm text-danger-500">{error}</p>}
 
         <button

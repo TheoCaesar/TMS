@@ -31,7 +31,7 @@ export function RestaurantDetailPage() {
   }
 
   return (
-    <div className="pb-28 md:mx-auto md:max-w-2xl">
+    <div className="pb-28 md:mx-auto md:max-w-2xl md:pb-0">
       <div className="relative flex h-72 items-center justify-center bg-gradient-to-br from-brand-100 to-brand-50 text-brand-600 dark:from-neutral-800 dark:to-neutral-950 md:mt-6 md:h-80 md:rounded-card">
         <Utensils className="size-12" />
         <Link
@@ -127,7 +127,7 @@ export function RestaurantDetailPage() {
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-[72px] mx-auto max-w-md px-5 py-3 md:max-w-2xl md:bottom-0">
+      <div className="fixed inset-x-0 bottom-[72px] mx-auto max-w-md px-5 py-3 md:sticky md:inset-x-auto md:bottom-0 md:max-w-none md:bg-white md:pb-5 md:dark:bg-neutral-950">
         <button
           type="button"
           className="w-full rounded-xl bg-brand-600 py-3.5 text-base font-semibold text-white transition hover:bg-brand-700"

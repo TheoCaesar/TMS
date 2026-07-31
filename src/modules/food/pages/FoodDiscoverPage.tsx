@@ -27,7 +27,7 @@ export function FoodDiscoverPage() {
   );
 
   return (
-    <div className="md:mx-auto md:max-w-2xl">
+    <div className="md:mx-auto md:max-w-5xl md:px-6 lg:px-8">
       <header className="px-5 pt-6 pb-4 md:pt-10">
         <h1 className="text-2xl font-bold text-ink-900 dark:text-white">Food &amp; Drinks</h1>
       </header>

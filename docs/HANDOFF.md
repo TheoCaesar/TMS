@@ -4,6 +4,10 @@ Snapshot of exactly where things stand, for picking this up cold (a new
 session, a new person, or future-you). For the full chronological story
 of *why* each decision was made, see [`DEVELOPMENT_LOG.md`](DEVELOPMENT_LOG.md)
 — this file is the "state now," that file is the "how we got here."
+For a per-endpoint breakdown of what the backend supports, what's broken, and
+what's still needed, see [`API_STATUS.md`](API_STATUS.md). For the endpoint
+spec the five unbacked modules would need, see
+[`API_REQUIREMENTS.md`](API_REQUIREMENTS.md).
 
 **Last updated:** 2026-07-31 (session 7 — dropped the dead Bookings tab, SOS moved into the nav bar)
 
@@ -90,10 +94,12 @@ Working convention established across every screen so far:
 | --- | --- | --- |
 | `/` (Home) | ✅ Real data | Quick Access grid (Emergency removed — reachable via bottom nav SOS/TopNav instead), Featured Destinations from `GET /destinations`, Today's Deals (static design content, no deals backend exists) |
 | `/explore` | ✅ Real data | Tours + Destinations; category pills only "All" populated |
-| `/explore/:slug` (Tour Detail) | ✅ Real data + booking | Full booking flow: select departure → seats → Book Now |
-| `/bookings/:reference` (Booking Detail) | ✅ Real data + payment | Pay with Paystack, manual verify fallback, Cancel booking (with inline confirm) for PENDING/CONFIRMED — verified end-to-end against the live API (PENDING → CANCELLED) |
+| `/explore/:slug` (Tour Detail) | ✅ Real data + booking | Full booking flow: select departure → seats → Book Now. Reviews list (`GET /tours/:id/reviews`) below departures |
+| `/bookings/:reference` (Booking Detail) | ✅ Real data + payment | Paystack checkout opens in a **separate tab** (page stays alive behind it; auto-refetches on tab focus + socket), manual verify fallback, Cancel booking (with inline confirm) for PENDING/CONFIRMED — verified end-to-end against the live API |
 | `/payments/callback` | ✅ Built | Handles Paystack redirect; best-guess URL, see below |
-| `/login`, `/register` | ✅ Real, verified E2E | Register matches a captured Figma screen |
+| `/login`, `/register` | ✅ Real, verified E2E | Register matches a captured Figma screen. Login links to password recovery |
+| `/forgot-password` | ✅ Real, verified E2E | `POST /auth/forgot-password`. Success copy says "if an account exists" — the endpoint always 200s to prevent account enumeration |
+| `/reset-password?token=` | ✅ Real, verified E2E | `POST /auth/reset-password`. Guards a missing/blank token with a "request a new link" screen; validates length + match client-side |
 | `/trips` (My Trips / "My Bookings") | ⚠️ Built, unverified happy path | Real data via `GET /bookings/me`, but that endpoint 500s (see below) — only the error/retry state has been visually confirmed |
 | `/itineraries` | ✅ Real data, verified E2E | AI trip planner. Generate form + saved list (`POST /itineraries/generate`, `GET/DELETE /itineraries`). Reached from Home's Quick Access |
 | `/itineraries/:id` | ✅ Real data, verified E2E | Day-by-day plan grouped by morning/afternoon/evening; `bookable` items deep-link to `/explore/:slug` — followed in-browser through to a real bookable departure |
@@ -207,6 +213,25 @@ endpoint exists to clean them up):
   the latter is what the live API actually returns. Some names
   deliberately collide (`UserRole`, `BookingStatus`) — import from the
   one that matches what you're building against.
+- **Never put a CSS transform on `AppLayout` (or any ancestor of the nav).**
+  A transformed ancestor becomes the containing block for `position: fixed`
+  descendants, so `BottomNav`'s `bottom-0` resolves to the bottom of the
+  *page* rather than the viewport — the tab bar then scrolls away on any
+  page taller than the screen. This was a live bug; the fix was removing
+  `transform-gpu` and having `BottomNav`/`SosButton` constrain their own
+  contents with an inner `max-w-md` wrapper instead.
+- **Page action bars** (tour booking, hotel reserve, restaurant reserve) are
+  `fixed` above the tab bar on mobile, and **`md:sticky`** on desktop so they
+  settle at the end of the content column instead of floating over the site
+  footer. Follow that pattern for any new sticky bar.
+- **Desktop vs mobile shell.** `AppLayout` is two layouts in one: below
+  `md` a phone-width column with the bottom tab bar; at `md+` a **full-width
+  web page** — pages own their own `max-w-7xl` container and `SiteFooter`
+  closes the page. It used to stay a capped `max-w-6xl` box floating on the
+  grey app background, which left dead gutters and stranded content in a
+  narrow strip (worst on `/profile`). **When adding a page, give it its own
+  desktop container** — the shell no longer caps width, so an uncapped grid
+  page will stretch edge-to-edge on a wide monitor.
 - **Design tokens** live in `src/index.css` under `@theme` — `brand`
   (teal, primary actions), `ink` (near-black headings), `accent` (amber,
   ratings/loyalty), `danger` (red, destructive/emergency), plus
