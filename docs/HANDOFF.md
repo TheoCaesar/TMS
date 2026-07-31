@@ -91,7 +91,7 @@ Working convention established across every screen so far:
 | `/profile/personal-info` | ✅ Real data + save, verified E2E | The one settings row with backend support (`PATCH /users/me`) |
 | `/flights`, `/hotels`, `/food` | 🟡 Placeholder | `PlaceholderPage` only — no Figma capture yet, no backend either |
 | `/transport` | 🟡 UI built, no data | Matches a captured Figma screen; no backend to wire, no mock data per user's call |
-| `/emergency` | 🟡 Placeholder | No Figma capture yet. **Priority**: safety-critical per SRS (FR-EMRG-*), should not stay a placeholder long |
+| `/emergency` | ✅ Built from screenshot | SOS trigger, Quick Actions grid, Nearest Medical Facilities list — matches user-supplied screenshot. UI-only, no backend for this module |
 | `/bookings` (list, Calendar nav tab) | 🟡 Placeholder, unresolved | See "Open questions" — may or may not be a distinct screen from `/trips` |
 
 ## Known backend issues (not fixable from the frontend)
@@ -163,7 +163,7 @@ endpoint exists to clean them up):
   screen (confirmed with the user — its own bottom nav highlighted "My
   Trips"). `/bookings` remains an unresolved placeholder with no Figma
   evidence of what it's for, if anything distinct.
-- **Figma reference still needed for:** Flights, Hotels, Food, Emergency.
+- **Figma reference still needed for:** Flights, Hotels, Food.
   Ask the user for screenshots or try the live Figma prototype (see
   below) before designing these from scratch.
 
@@ -184,12 +184,10 @@ iframe — drag the visible right-side scrollbar thumb instead
 
 ## Immediate next steps (in rough priority order)
 
-1. Get Figma/screenshot reference for **Emergency** — it's safety-critical
-   per the SRS and shouldn't stay a placeholder.
-2. Resolve the `/bookings` open question above.
-3. Re-test `POST /payments/initiate` and `GET /bookings/me` — if fixed,
+1. Resolve the `/bookings` open question above.
+2. Re-test `POST /payments/initiate` and `GET /bookings/me` — if fixed,
    verify `/trips`'s real card rendering (currently unconfirmed) and
    re-confirm the Paystack payment flow.
-4. Flights, Hotels, Food — same pattern as the above once reference
-   material exists.
-5. Consider shared auth state (see "Known gap" above).
+3. Flights, Hotels, Food — get Figma/screenshot reference, same pattern
+   as Emergency/Transport once it exists.
+4. Consider shared auth state (see "Known gap" above).
