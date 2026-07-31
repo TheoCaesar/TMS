@@ -68,6 +68,48 @@ Auth (6) · Users + loyalty (3) · Destinations CRUD (5) · Tours incl. operator
 Payments (2) · Itineraries (4) · Uploads (1) · Emergency facilities/contacts
 /SOS trigger + cancel (4) · plus both Socket.IO namespaces.
 
+### A2. Stays + Flights — NOW WIRED
+
+- **Stays** (`GET /stays`, `/stays/:slug`, `/stays/:id/rooms`,
+  `POST /stays/:id/book`): `/hotels` searches server-side (q, category,
+  guests); the detail page prices rooms for the chosen check-in/out and
+  books. Verified: `STY-2026-0003` PENDING at GHS 5,400 (3 nights x 1,800),
+  then cancelled.
+- **Flights** (`GET /flights/airports`, `POST /flights/search`,
+  `POST /flights/offers/:id/book`): airports populate the selects, the search
+  lives in the URL (`/flights/results?origin=…`) so results are shareable,
+  and offers book. Verified: `FLT-2026-0004` PENDING at GHS 850, cancelled.
+  - Only **ONE_WAY** is exposed — the search body takes a single `date`, so a
+    return/multi-city toggle would be a control the API can't honour.
+  - Offers **expire**; a 400 on book is caught and re-runs the search rather
+    than showing a dead error.
+  - An empty `offers[]` is a legitimate result, so it renders as an empty
+    state, not an error. Probed 2026-08-01..10 across all 56 airport pairs:
+    **inventory only starts ~3 days out** (nothing on the next two days, on
+    any route), and only 5 routes are seeded at all — see below.
+
+**Seeded flight inventory (probed 2026-07-31):**
+
+| Route | From | Airline |
+| --- | --- | --- |
+| ACC → KMS | GHS 450 | Africa World Airlines |
+| ACC → LOS | GHS 850 | Africa World Airlines |
+| LOS → ACC | GHS 850 | Africa World Airlines |
+| ACC → ABJ | GHS 1,200 | ASKY Airlines |
+| ACC → LHR | GHS 9,500 | British Airways |
+
+2 offers per route per day. TML, ROB and DKR are listed as airports but have
+**no inventory in either direction**, and only LOS has a return leg — worth
+asking the backend whether that's intentional.
+
+Both static data files (`accommodation/data.ts`, `food/data.ts`) are deleted.
+
+**Still unwired (3):** `GET /flights/offers/:id` (search already returns full
+offers), `GET /emergency/sos/:alertId`, and `GET /reservations/:ref` — the
+latter has a client function but no screen, because `GET /bookings/me` still
+returns tour bookings only, so STAY/FLIGHT/TABLE reservations don't appear
+in `/trips`.
+
 ### B. NOW WIRED (was "backend ready, frontend not wired")
 
 As of this session the Food module, emergency contacts and Explore's

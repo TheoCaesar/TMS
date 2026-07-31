@@ -1,4 +1,5 @@
 import {
+  AlertCircle,
   Building2,
   Car,
   Compass,
@@ -17,17 +18,29 @@ import { useAuth } from '@/hooks/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
 import { Skeleton, SkeletonLine } from '@/components/ui/Skeleton';
 
-// Six tiles, so the grid divides evenly at every breakpoint (3x2 on mobile,
-// 6 across on desktop). Emergency dropped from here — it now lives in the
-// bottom nav's raised SOS button (and TopNav's persistent Emergency link on
-// desktop) instead of sharing this grid.
-const quickAccess = [
+// Six tiles on mobile (3x2), seven on desktop.
+//
+// `desktopOnly`: Emergency is hidden on mobile because the raised SOS button
+// in the bottom nav already covers it there — a second entry point would be
+// redundant. Desktop has no FAB, so it earns a tile.
+//
+// `disabled`: Transport has no backend (no dispatch or fare-quote endpoints),
+// so it renders greyed and inert rather than linking to a dead end.
+const quickAccess: {
+  to: string;
+  label: string;
+  icon: typeof Compass;
+  desktopOnly?: boolean;
+  disabled?: boolean;
+  danger?: boolean;
+}[] = [
   { to: ROUTES.explore, label: 'Explore', icon: Compass },
   { to: ROUTES.itineraries, label: 'Plan Trip', icon: Sparkles },
   { to: ROUTES.flights, label: 'Flights', icon: Plane },
   { to: ROUTES.hotels, label: 'Hotels', icon: Building2 },
   { to: ROUTES.food, label: 'Food', icon: Utensils },
-  { to: ROUTES.transport, label: 'Transport', icon: Car },
+  { to: ROUTES.transport, label: 'Transport', icon: Car, disabled: true },
+  { to: ROUTES.emergency, label: 'Emergency', icon: AlertCircle, desktopOnly: true, danger: true },
 ];
 
 // No backend for a deals/discounts concept — this is the Figma design's
@@ -103,17 +116,36 @@ export function HomePage() {
         <h2 className="mb-3 text-lg font-bold text-ink-900 dark:text-white md:mb-6 md:text-center md:text-2xl">
           Quick Access
         </h2>
-        <div className="grid grid-cols-3 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-6">
-          {quickAccess.map(({ to, label, icon: Icon }) => (
-            <Link
-              key={to}
-              to={to}
-              className="flex flex-col items-center justify-center gap-2 rounded-card border border-neutral-100 bg-white py-5 shadow-sm transition hover:border-brand-200 hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900 md:py-8"
-            >
-              <Icon className="size-6 text-brand-600 md:size-7" />
-              <span className="text-sm font-medium text-ink-900 dark:text-white">{label}</span>
-            </Link>
-          ))}
+        <div className="grid grid-cols-3 gap-3 md:grid-cols-4 md:gap-4 lg:grid-cols-7">
+          {quickAccess.map(({ to, label, icon: Icon, desktopOnly, disabled, danger }) => {
+            const base = `flex flex-col items-center justify-center gap-2 rounded-card border border-neutral-100 bg-white py-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 md:py-8 ${
+              desktopOnly ? 'hidden md:flex' : ''
+            }`;
+            const iconClass = `size-6 md:size-7 ${danger ? 'text-danger-500' : 'text-brand-600'}`;
+            const labelClass = `text-sm font-medium ${danger ? 'text-danger-500' : 'text-ink-900 dark:text-white'}`;
+
+            // Greyed and non-interactive: no backend to link to yet.
+            if (disabled) {
+              return (
+                <div key={to} className={`${base} opacity-50`} aria-disabled="true">
+                  <Icon className="size-6 text-neutral-400 md:size-7" />
+                  <span className="text-sm font-medium text-neutral-400">{label}</span>
+                  <span className="text-[10px] text-neutral-400">Coming soon</span>
+                </div>
+              );
+            }
+
+            return (
+              <Link
+                key={to}
+                to={to}
+                className={`${base} transition hover:border-brand-200 hover:shadow-md`}
+              >
+                <Icon className={iconClass} />
+                <span className={labelClass}>{label}</span>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
