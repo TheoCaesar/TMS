@@ -28,7 +28,7 @@ export function AccommodationSearchPage() {
   const [category, setCategory] = useState<Category>('All');
 
   return (
-    <div className="md:mx-auto md:max-w-2xl">
+    <div className="md:mx-auto md:max-w-5xl md:px-6 lg:px-8">
       <header className="px-5 pt-6 pb-4 md:pt-10">
         <h1 className="text-2xl font-bold text-ink-900 dark:text-white">Find a Place to Stay</h1>
       </header>
@@ -87,7 +87,7 @@ export function AccommodationSearchPage() {
           No {category.toLowerCase()} listed yet — check back soon.
         </p>
       ) : (
-        <div className="flex flex-col gap-4 px-5 pb-6 md:grid md:grid-cols-2 md:gap-4">
+        <div className="flex flex-col gap-4 px-5 pb-6 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-3">
           {hotels.map((hotel) => (
             <Link
               key={hotel.slug}

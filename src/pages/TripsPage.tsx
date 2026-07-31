@@ -90,7 +90,7 @@ export function TripsPage() {
   }
 
   return (
-    <div className="md:px-8">
+    <div className="md:mx-auto md:max-w-7xl md:px-8">
       <header className="px-5 pt-6 pb-4 md:px-0 md:pt-10">
         <h1 className="text-2xl font-bold text-ink-900 dark:text-white md:text-3xl">My Bookings</h1>
       </header>

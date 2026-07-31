@@ -79,11 +79,19 @@ function ProfileContent() {
   // The settings menu and Log Out button are entirely static — they render
   // on the first frame and never wait on a fetch. Only the header card's
   // avatar, name, email and loyalty pill resolve.
+  // Desktop is a two-column layout: identity card sticky on the left, the
+  // settings menu on the right. It used to be one ~400px column centred in a
+  // full-width page, which left most of the screen empty.
   return (
-    <div className="px-5 py-6 md:mx-auto md:max-w-md md:py-10">
-      <div className="mb-6 flex items-center gap-4 rounded-card border border-neutral-100 p-4 dark:border-neutral-800">
+    <div className="px-5 py-6 md:mx-auto md:max-w-5xl md:px-6 md:py-12 lg:px-8">
+      <h1 className="mb-6 hidden text-3xl font-bold text-ink-900 dark:text-white md:block">
+        Profile
+      </h1>
+
+      <div className="md:grid md:grid-cols-[320px_1fr] md:items-start md:gap-8">
+      <div className="mb-6 flex items-center gap-4 rounded-card border border-neutral-100 p-4 dark:border-neutral-800 md:mb-0 md:sticky md:top-24 md:flex-col md:items-start md:gap-3 md:p-6">
         {profile ? (
-          <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-50 text-2xl font-bold text-brand-600 dark:bg-brand-700/20">
+          <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-50 text-2xl font-bold text-brand-600 dark:bg-brand-700/20 md:size-20 md:text-3xl">
             {profile.avatarUrl ? (
               <img src={profile.avatarUrl} alt={profile.fullName} className="size-full object-cover" />
             ) : (
@@ -91,7 +99,7 @@ function ProfileContent() {
             )}
           </div>
         ) : (
-          <SkeletonCircle className="size-16 shrink-0" />
+          <SkeletonCircle className="size-16 shrink-0 md:size-20" />
         )}
 
         <div className="min-w-0 flex-1">
@@ -125,6 +133,9 @@ function ProfileContent() {
         </div>
       </div>
 
+      {/* Right-hand column on desktop; a plain stack on mobile. The error
+          lives in here so the grid only ever has its two intended children. */}
+      <div className="md:min-w-0">
       {status === 'error' && (
         <div className="mb-4 flex items-center justify-between rounded-card border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
           <span>Couldn't load your loyalty points.</span>
@@ -184,6 +195,8 @@ function ProfileContent() {
         </div>
         <span className="font-medium">Log Out</span>
       </button>
+      </div>
+      </div>
     </div>
   );
 }

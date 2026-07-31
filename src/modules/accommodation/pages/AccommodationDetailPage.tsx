@@ -43,7 +43,7 @@ export function AccommodationDetailPage() {
   const displayPrice = selectedRoom?.pricePerNight ?? hotel.pricePerNight;
 
   return (
-    <div className="pb-24 md:mx-auto md:max-w-2xl">
+    <div className="pb-24 md:mx-auto md:max-w-2xl md:pb-0">
       <div className="relative flex h-72 items-center justify-center bg-gradient-to-br from-brand-100 to-brand-50 text-brand-600 dark:from-neutral-800 dark:to-neutral-950 md:mt-6 md:h-80 md:rounded-card">
         <HotelIcon className="size-12" />
         <Link
@@ -149,7 +149,7 @@ export function AccommodationDetailPage() {
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-[72px] mx-auto flex max-w-md items-center justify-between border-t border-neutral-100 bg-white py-3 pl-5 pr-20 dark:border-neutral-800 dark:bg-neutral-950 md:max-w-2xl md:bottom-0 md:pr-8">
+      <div className="fixed inset-x-0 bottom-[72px] mx-auto flex max-w-md items-center justify-between border-t border-neutral-100 bg-white py-3 pl-5 pr-20 dark:border-neutral-800 dark:bg-neutral-950 md:pr-8 md:sticky md:inset-x-auto md:bottom-0 md:max-w-none md:rounded-t-card md:border md:border-b-0 md:shadow-[0_-6px_20px_rgba(20,33,61,0.08)]">
         <div>
           <span className="text-lg font-bold text-brand-600 dark:text-brand-500">
             {displayPrice}

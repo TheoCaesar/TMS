@@ -1,4 +1,4 @@
-import { CheckCircle2, Clock, RefreshCw, XCircle } from 'lucide-react';
+import { CheckCircle2, Clock, ExternalLink, RefreshCw, XCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { throwError } from 'rxjs';
@@ -6,6 +6,7 @@ import { finalize } from 'rxjs/operators';
 import { ApiError, bookingsApi, paymentsApi, socketApi } from '@/lib/api';
 import { useApiResource } from '@/hooks/useApiResource';
 import { SkeletonCircle, SkeletonLine, SkeletonRegion } from '@/components/ui/Skeleton';
+import { WriteReview } from '@/modules/bookings/components/WriteReview';
 import { formatMoney } from '@/lib/format';
 
 // Reached right after creating a booking (TourDetailPage) or later from
@@ -23,6 +24,10 @@ export function BookingDetailPage() {
   const { reference } = useParams<{ reference: string }>();
   const [payError, setPayError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
+  // Set once checkout has been opened in the other tab — drives the
+  // "finish in the other tab, then come back" panel below.
+  const [awaitingPayment, setAwaitingPayment] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [canceling, setCanceling] = useState(false);
@@ -56,15 +61,53 @@ export function BookingDetailPage() {
     return () => subscription.unsubscribe();
   }, [reference]);
 
+  // Coming back from the Paystack tab should just work, even if the socket
+  // never connected. Refetching on tab-focus covers that without polling.
+  useEffect(() => {
+    if (!awaitingPayment) return;
+    function onVisible() {
+      if (document.visibilityState === 'visible') retryRef.current();
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [awaitingPayment]);
+
+  // Paystack checkout opens in a SEPARATE tab so this page stays alive
+  // behind it — the user pays there, comes back to this tab, and sees the
+  // status update (pushed over the socket, or via "Check status").
+  //
+  // The tab has to be opened synchronously inside the click handler. By the
+  // time initiatePayment$ resolves we're outside the user-gesture window and
+  // popup blockers reject window.open, so a blank tab is opened up front and
+  // pointed at the real URL once it arrives. `noopener` isn't passed because
+  // it makes window.open return null; the opener is severed manually instead.
   function handlePay() {
     if (!reference) return;
+    const payWindow = window.open('', '_blank');
+    if (payWindow) payWindow.opener = null;
+
     setPaying(true);
     setPayError(null);
+    setAwaitingPayment(false);
+    setCheckoutUrl(null);
+
     paymentsApi.initiatePayment$({ bookingReference: reference }).subscribe({
       next: (result) => {
-        window.location.href = result.authorizationUrl;
+        setPaying(false);
+        setAwaitingPayment(true);
+        // Kept either way: it backs the manual link shown when the popup was
+        // blocked, and lets the user reopen checkout without paying twice.
+        setCheckoutUrl(result.authorizationUrl);
+        if (payWindow && !payWindow.closed) {
+          payWindow.location.replace(result.authorizationUrl);
+        }
       },
       error: (err: unknown) => {
+        payWindow?.close();
         setPayError(err instanceof ApiError ? err.message : 'Could not start payment.');
         setPaying(false);
       },
@@ -174,14 +217,53 @@ export function BookingDetailPage() {
 
       {booking?.status === 'PENDING' && (
         <div className="mt-5 space-y-3">
-          <button
-            type="button"
-            onClick={handlePay}
-            disabled={paying}
-            className="w-full rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
-          >
-            {paying ? 'Redirecting to Paystack…' : 'Pay with Paystack'}
-          </button>
+          {awaitingPayment ? (
+            <div className="space-y-3 rounded-card border border-brand-500/30 bg-brand-50 p-4 dark:bg-brand-700/15">
+              <div className="flex items-start gap-2">
+                <ExternalLink className="mt-0.5 size-4 shrink-0 text-brand-600 dark:text-brand-500" />
+                <div>
+                  <p className="text-sm font-semibold text-ink-900 dark:text-white">
+                    Complete your payment in the other tab
+                  </p>
+                  <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
+                    Come back here when you're done — this page updates on its own once Paystack
+                    confirms. You can leave it open.
+                  </p>
+                </div>
+              </div>
+
+              {/* Shown when the browser blocked the popup, and as a way back
+                  to checkout if the tab was closed by accident. */}
+              {checkoutUrl && (
+                <a
+                  href={checkoutUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+                >
+                  <ExternalLink className="size-4" /> Open the payment page again
+                </a>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handlePay}
+              disabled={paying}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
+            >
+              {paying ? (
+                <>
+                  <RefreshCw className="size-4 animate-spin" /> Opening Paystack…
+                </>
+              ) : (
+                <>
+                  <ExternalLink className="size-4" /> Pay with Paystack
+                </>
+              )}
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handleVerify}
@@ -189,10 +271,14 @@ export function BookingDetailPage() {
             className="flex w-full items-center justify-center gap-1.5 text-sm font-medium text-neutral-500 dark:text-neutral-400"
           >
             <RefreshCw className={`size-4 ${verifying ? 'animate-spin' : ''}`} />
-            I've already paid — check status
+            {awaitingPayment ? 'Check payment status now' : "I've already paid — check status"}
           </button>
         </div>
       )}
+
+      {/* Reviews are only accepted for COMPLETED bookings, so this appears
+          exactly when the trip has actually happened. */}
+      {booking?.status === 'COMPLETED' && reference && <WriteReview reference={reference} />}
 
       {(booking?.status === 'PENDING' || booking?.status === 'CONFIRMED') && (
         <div className="mt-5">
