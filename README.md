@@ -3,6 +3,10 @@
 React + TypeScript frontend for the Tourism Management System described in
 `docs/Tourism Management System SRS.docx` (SRS v2.0).
 
+**Picking this up after a break?** Start with
+[`docs/HANDOFF.md`](docs/HANDOFF.md) — a current snapshot of what's built,
+what's blocked, and what's next.
+
 For the full setup rationale, decisions made, and step-by-step replication
 instructions, see [`docs/DEVELOPMENT_LOG.md`](docs/DEVELOPMENT_LOG.md).
 
