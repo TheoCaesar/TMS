@@ -4,6 +4,7 @@ import { HomePage } from '@/pages/HomePage';
 import { TripsPage } from '@/pages/TripsPage';
 import { BookingsPage } from '@/pages/BookingsPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { PersonalInfoPage } from '@/pages/PersonalInfoPage';
 import { ExplorePage } from '@/modules/tours/pages/ExplorePage';
 import { TourDetailPage } from '@/modules/tours/pages/TourDetailPage';
 import { FlightSearchPage } from '@/modules/flights/pages/FlightSearchPage';
@@ -33,6 +34,7 @@ function App() {
         <Route path={ROUTES.bookings} element={<BookingsPage />} />
         <Route path={`${ROUTES.bookings}/:reference`} element={<BookingDetailPage />} />
         <Route path={ROUTES.profile} element={<ProfilePage />} />
+        <Route path={ROUTES.profilePersonalInfo} element={<PersonalInfoPage />} />
         <Route path={ROUTES.auth.login} element={<LoginPage />} />
         <Route path={ROUTES.auth.register} element={<RegisterPage />} />
         <Route path={ROUTES.paymentCallback} element={<PaymentCallbackPage />} />

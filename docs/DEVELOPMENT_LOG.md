@@ -518,6 +518,38 @@ this; the error/retry state renders correctly (confirmed), but the
 happy-path card layout is unverified until the backend fixes this.
 Flagging for the user/backend team, same as the payments findings.
 
+### Profile built from a second user-supplied screenshot ("profile-b")
+
+Screenshot showed only the settings-menu portion of the Profile screen
+(Personal Info / Travel Preferences / Payment Methods / Saved Places /
+Notifications / Emergency Contacts (red) / Help & Support, plus a
+separate Log Out card). No header screenshot existed ("profile-a" was
+asked about; user said design it instead). Asked two questions, both
+answered before building:
+
+1. Header (avatar/name/loyalty) — designed from real data fields
+   (`GET /users/me` + `GET /users/me/loyalty`), styled consistent with
+   the rest of the app: circular avatar (photo if `avatarUrl` is set,
+   else the user's initial), name, email, a tier + points pill.
+2. Most menu rows have zero backend support (Travel Preferences, Payment
+   Methods, Saved Places, Notifications, Emergency Contacts, Help &
+   Support — none of these exist as API concepts). User chose
+   non-interactive: they render matching Figma (icon, label, dimmed) but
+   don't navigate anywhere, rather than dead-ending on fake sub-screens.
+
+**Personal Info was treated differently** — it's the one row with real
+backend support (`PATCH /users/me`), so it got a real, working edit page
+(`src/pages/PersonalInfoPage.tsx`, route `/profile/personal-info`): Full
+Name and Phone editable, Email shown read-only (no change-email endpoint
+exists). Verified end-to-end in the browser: loaded real prefilled
+values, edited the name, saved, got a real "Saved." confirmation, and
+navigating back to `/profile` showed the updated name — confirming the
+`PATCH` actually persisted.
+
+Also wired a real Log Out button (`authApi.logout$()` → redirect home),
+and a logged-out prompt (`ProfilePage` checks `getTokens()` before
+rendering anything, matching the pattern used for booking).
+
 ### Next up
 
 - Once `GET /bookings/me` works, verify `TripsPage`'s card rendering
@@ -525,8 +557,8 @@ Flagging for the user/backend team, same as the payments findings.
   confirmed).
 - Figure out what `/bookings` (Calendar tab) is meant to show, if
   anything distinct from `/trips` — no Figma evidence yet.
-- Continue through Profile/Loyalty and the four unbacked modules
-  (Flights, Hotels, Food, Emergency) as screenshots/Figma come in.
+- Continue through the four unbacked modules (Flights, Hotels, Food,
+  Emergency) as screenshots/Figma come in.
 
 ---
 

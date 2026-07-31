@@ -12,6 +12,7 @@ export const ROUTES = {
   trips: '/trips',
   bookings: '/bookings',
   profile: '/profile',
+  profilePersonalInfo: '/profile/personal-info',
   auth: {
     login: '/login',
     register: '/register',
