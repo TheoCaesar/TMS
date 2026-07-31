@@ -31,3 +31,34 @@ body {
   color-scheme: light dark;
   background: var(--color-app-bg);
 }
+
+/*
+ * Scrollbars are hidden app-wide — scrolling still works exactly as before
+ * (wheel, trackpad, touch, keyboard, and programmatic scrolling are all
+ * unaffected), the chrome just isn't painted. This keeps the horizontal
+ * carousels (Home's destinations, Explore's category pills) from showing a
+ * scrollbar track under the content, and matches the mobile-first design
+ * the app is built around.
+ *
+ * Applied to * rather than only html/body so it also covers the nested
+ * scroll containers; `scrollbar-width` and the WebKit pseudo-element are
+ * both needed for cross-browser coverage.
+ */
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Respect users who ask for less motion: the pulse on every skeleton
+ * (src/components/ui/Skeleton.tsx) is decorative, so drop it to a static
+ * muted block rather than animating.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse {
+    animation: none;
+  }
+}

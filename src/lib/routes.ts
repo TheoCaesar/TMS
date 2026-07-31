@@ -11,6 +11,7 @@ export const ROUTES = {
   emergency: '/emergency',
   trips: '/trips',
   bookings: '/bookings',
+  itineraries: '/itineraries',
   profile: '/profile',
   profilePersonalInfo: '/profile/personal-info',
   auth: {

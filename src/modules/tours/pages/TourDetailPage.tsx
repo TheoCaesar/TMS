@@ -1,10 +1,19 @@
 import { ChevronLeft, Minus, Plus, RefreshCw, MapPin, Star, Users } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { forkJoin, of, throwError } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
-import { bookingsApi, destinationsApi, getTokens, toursApi, ApiError, type Departure } from '@/lib/api';
+import {
+  bookingsApi,
+  destinationsApi,
+  getTokens,
+  socketApi,
+  toursApi,
+  ApiError,
+  type Departure,
+} from '@/lib/api';
 import { useApiResource } from '@/hooks/useApiResource';
+import { SkeletonLine, SkeletonRegion, SkeletonText } from '@/components/ui/Skeleton';
 import { formatDate, formatDuration, formatMoney, formatTime } from '@/lib/format';
 import { ROUTES } from '@/lib/routes';
 
@@ -19,6 +28,10 @@ export function TourDetailPage() {
   const [seats, setSeats] = useState(1);
   const [booking, setBooking] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
+  // Live seatsLeft pushed over the /availability socket, keyed by departure
+  // id. Overlays (never mutates) the values fetched over REST, so the page
+  // renders correctly whether or not the socket ever connects.
+  const [liveSeats, setLiveSeats] = useState<Record<string, number>>({});
 
   const { data, status, retry } = useApiResource(() => {
     if (!slug) return throwError(() => new Error('Missing tour slug'));
@@ -35,33 +48,42 @@ export function TourDetailPage() {
     );
   });
 
-  if (status === 'loading') {
-    return (
-      <div className="space-y-3 p-5">
-        <div className="h-48 animate-pulse rounded-card bg-neutral-100 dark:bg-neutral-900" />
-        <div className="h-6 w-2/3 animate-pulse rounded bg-neutral-100 dark:bg-neutral-900" />
-        <div className="h-4 w-1/3 animate-pulse rounded bg-neutral-100 dark:bg-neutral-900" />
-      </div>
-    );
+  // Watch the selected departure's seat count drop as other people book it.
+  // Opt-in per departure, so this resubscribes whenever the selection moves.
+  const selectedDepartureId = selectedDeparture?.id;
+  useEffect(() => {
+    if (!selectedDepartureId) return;
+    const subscription = socketApi.departureAvailability$(selectedDepartureId).subscribe({
+      next: (event) => {
+        setLiveSeats((previous) => ({ ...previous, [event.departureId]: event.seatsLeft }));
+        // If seats sold out from under us, pull the picker back down so the
+        // total shown and the request sent can't be stale-high.
+        setSeats((current) => Math.max(1, Math.min(current, event.seatsLeft)));
+      },
+      // Sockets are an enhancement here — on failure the REST seat counts
+      // simply stay as last fetched.
+      error: () => {},
+    });
+    return () => subscription.unsubscribe();
+  }, [selectedDepartureId]);
+
+  // The page shell below renders on the first frame regardless of status —
+  // hero frame, back button, section headings and the departures card all
+  // paint immediately, and only the values inside them swap from skeleton
+  // to real data. See docs/UI_CONVENTIONS.md.
+  const loading = status === 'loading';
+  const tour = data?.tour;
+  const departures = data?.departures ?? [];
+  const destination = data?.destination;
+
+  // Live value where the socket has given us one, otherwise what REST returned.
+  function seatsLeftFor(departure: Departure): number {
+    return liveSeats[departure.id] ?? departure.seatsLeft;
   }
 
-  if (status === 'error' || !data) {
-    return (
-      <div className="flex flex-col items-center gap-3 p-8 text-center">
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">Couldn't load this tour.</p>
-        <button
-          type="button"
-          onClick={retry}
-          className="flex items-center gap-1 text-sm font-medium text-brand-600 dark:text-brand-500"
-        >
-          <RefreshCw className="size-4" /> Retry
-        </button>
-      </div>
-    );
-  }
-
-  const { tour, departures, destination } = data;
-  const maxSeats = Math.min(selectedDeparture?.seatsLeft ?? 1, 20);
+  const selectedSeatsLeft = selectedDeparture ? seatsLeftFor(selectedDeparture) : 0;
+  const maxSeats = Math.min(selectedSeatsLeft, 20);
+  const soldOut = selectedDeparture !== null && selectedSeatsLeft === 0;
 
   function selectDeparture(departure: Departure) {
     setSelectedDeparture(departure);
@@ -70,7 +92,7 @@ export function TourDetailPage() {
   }
 
   function handleBookNow() {
-    if (!selectedDeparture) return;
+    if (!selectedDeparture || !tour) return;
     if (!getTokens()) {
       navigate(ROUTES.auth.login);
       return;
@@ -89,10 +111,10 @@ export function TourDetailPage() {
   return (
     <div className={`md:mx-auto md:max-w-2xl ${selectedDeparture ? 'pb-24' : ''}`}>
       <div className="relative flex h-56 items-center justify-center overflow-hidden bg-gradient-to-br from-brand-100 to-brand-50 text-brand-600 dark:from-neutral-800 dark:to-neutral-950 md:mt-6 md:h-72 md:rounded-card">
-        {tour.heroImageUrl ? (
+        {tour?.heroImageUrl ? (
           <img src={tour.heroImageUrl} alt={tour.title} className="size-full object-cover" />
         ) : (
-          <MapPin className="size-12" />
+          <MapPin className={`size-12 ${loading ? 'opacity-40' : ''}`} />
         )}
         <Link
           to={ROUTES.explore}
@@ -103,42 +125,112 @@ export function TourDetailPage() {
       </div>
 
       <div className="px-5 py-5">
-        <h1 className="text-2xl font-bold text-ink-900 dark:text-white">{tour.title}</h1>
+        {tour ? (
+          <h1 className="text-2xl font-bold text-ink-900 dark:text-white">{tour.title}</h1>
+        ) : (
+          // h-8 matches text-2xl's 2rem line box, so the title swap is silent.
+          <SkeletonLine boxClassName="h-8" className="w-3/4" />
+        )}
+
         <div className="mt-1 flex items-center gap-3 text-sm text-neutral-500 dark:text-neutral-400">
-          {destination && (
-            <span className="flex items-center gap-1">
-              <MapPin className="size-4" /> {destination.name}
-            </span>
+          {tour ? (
+            <>
+              {destination && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="size-4" /> {destination.name}
+                </span>
+              )}
+              <span className="flex items-center gap-1">
+                <Star className="size-4 fill-accent-500 text-accent-500" />
+                {tour.ratingCount > 0 ? `${tour.ratingAvg.toFixed(1)} (${tour.ratingCount})` : 'New'}
+              </span>
+            </>
+          ) : (
+            <>
+              <SkeletonLine className="w-28" />
+              <SkeletonLine className="w-16" />
+            </>
           )}
-          <span className="flex items-center gap-1">
-            <Star className="size-4 fill-accent-500 text-accent-500" />
-            {tour.ratingCount > 0 ? `${tour.ratingAvg.toFixed(1)} (${tour.ratingCount})` : 'New'}
-          </span>
         </div>
 
-        <p className="mt-4 text-sm leading-relaxed text-neutral-600 dark:text-neutral-300">
-          {tour.description}
-        </p>
+        {/* Description length is unknowable in advance, so both states
+            reserve the same two-line minimum. Short descriptions leave a
+            little whitespace; nothing below ever jumps. */}
+        <div className="mt-4 min-h-[45.5px]">
+          {tour ? (
+            <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-300">
+              {tour.description}
+            </p>
+          ) : (
+            <SkeletonText lines={2} />
+          )}
+        </div>
 
+        {/* The price bar's frame is static, so it stays put and only the two
+            values inside it resolve — no layout jump when they arrive. */}
         <div className="mt-5 flex items-center justify-between rounded-card border border-neutral-100 bg-neutral-50 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900">
-          <span className="text-sm text-neutral-500 dark:text-neutral-400">
-            {formatDuration(tour.durationMinutes)} · per person
-          </span>
-          <span className="text-lg font-bold text-ink-900 dark:text-white">
-            {formatMoney(tour.priceMinor, tour.currency)}
-          </span>
+          {tour ? (
+            <>
+              <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                {formatDuration(tour.durationMinutes)} · per person
+              </span>
+              <span className="text-lg font-bold text-ink-900 dark:text-white">
+                {formatMoney(tour.priceMinor, tour.currency)}
+              </span>
+            </>
+          ) : (
+            <>
+              <SkeletonLine className="w-32" />
+              {/* h-7 matches the text-lg price beside it. */}
+              <SkeletonLine boxClassName="h-7" className="w-24" />
+            </>
+          )}
         </div>
 
         <h2 className="mb-3 mt-6 text-lg font-bold text-ink-900 dark:text-white">
           Upcoming Departures
         </h2>
-        {departures.length === 0 ? (
+
+        {status === 'error' && (
+          <div className="flex items-center justify-between rounded-card border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
+            <span>Couldn't load this tour.</span>
+            <button
+              type="button"
+              onClick={retry}
+              className="flex items-center gap-1 font-medium text-brand-600 dark:text-brand-500"
+            >
+              <RefreshCw className="size-4" /> Retry
+            </button>
+          </div>
+        )}
+
+        {/* Departure rows: same height and internal layout as the real ones
+            (date + time on the left, seats on the right). */}
+        {loading && (
+          <SkeletonRegion label="Loading departures" className="space-y-2">
+            {Array.from({ length: 2 }, (_, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between rounded-card border border-neutral-100 px-4 py-3 dark:border-neutral-800"
+              >
+                <div className="space-y-2">
+                  <SkeletonLine className="w-28" />
+                  <SkeletonLine className="w-16" />
+                </div>
+                <SkeletonLine className="w-14" />
+              </div>
+            ))}
+          </SkeletonRegion>
+        )}
+
+        {status === 'ready' && departures.length === 0 ? (
           <p className="text-sm text-neutral-400">No departures scheduled yet.</p>
         ) : (
           <div className="space-y-2">
             {departures.map((departure) => {
               const isSelected = selectedDeparture?.id === departure.id;
-              const isFull = departure.seatsLeft === 0;
+              const seatsLeft = seatsLeftFor(departure);
+              const isFull = seatsLeft === 0;
               return (
                 <button
                   key={departure.id}
@@ -160,7 +252,7 @@ export function TourDetailPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 text-sm text-neutral-500 dark:text-neutral-400">
-                    <Users className="size-4" /> {isFull ? 'Full' : `${departure.seatsLeft} left`}
+                    <Users className="size-4" /> {isFull ? 'Full' : `${seatsLeft} left`}
                   </div>
                 </button>
               );
@@ -198,7 +290,9 @@ export function TourDetailPage() {
         {bookingError && <p className="mt-3 text-sm text-danger-500">{bookingError}</p>}
       </div>
 
-      {selectedDeparture && (
+      {/* Only reachable once data has loaded — a departure can't be selected
+          before then — but tour is narrowed explicitly for the type checker. */}
+      {selectedDeparture && tour && (
         <div className="fixed inset-x-0 bottom-[72px] mx-auto flex max-w-md items-center justify-between border-t border-neutral-100 bg-white py-3 pl-5 pr-20 dark:border-neutral-800 dark:bg-neutral-950 md:max-w-2xl md:bottom-0 md:pr-8">
           <div>
             <div className="text-xs text-neutral-500 dark:text-neutral-400">Total</div>
@@ -209,10 +303,10 @@ export function TourDetailPage() {
           <button
             type="button"
             onClick={handleBookNow}
-            disabled={booking}
+            disabled={booking || soldOut}
             className="rounded-full bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:opacity-60"
           >
-            {booking ? 'Booking…' : 'Book Now'}
+            {soldOut ? 'Sold out' : booking ? 'Booking…' : 'Book Now'}
           </button>
         </div>
       )}

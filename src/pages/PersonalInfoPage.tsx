@@ -2,7 +2,8 @@ import { ChevronLeft, RefreshCw } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError, usersApi } from '@/lib/api';
-import { useApiResource } from '@/hooks/useApiResource';
+import { useAuth } from '@/hooks/useAuth';
+import { Skeleton, SkeletonRegion } from '@/components/ui/Skeleton';
 import { TextField } from '@/components/ui/TextField';
 import { ROUTES } from '@/lib/routes';
 
@@ -10,7 +11,10 @@ import { ROUTES } from '@/lib/routes';
 // with real backend support (PATCH /users/me). Email isn't editable: the
 // API has no change-email endpoint.
 export function PersonalInfoPage() {
-  const { data: profile, status, retry } = useApiResource(() => usersApi.getMe$());
+  // Reads from — and writes back to — the shared auth context, so saving
+  // here updates the nav and Profile without a refetch or a reload.
+  const { user: profile, loading, refresh } = useAuth();
+  const status = loading ? 'loading' : profile ? 'ready' : 'error';
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -34,6 +38,8 @@ export function PersonalInfoPage() {
       next: () => {
         setSaving(false);
         setSaved(true);
+        // Keep the shared profile in step with what was just persisted.
+        refresh();
       },
       error: (err: unknown) => {
         setError(err instanceof ApiError ? err.message : 'Could not save your changes.');
@@ -54,8 +60,20 @@ export function PersonalInfoPage() {
         <h1 className="text-2xl font-bold text-ink-900 dark:text-white">Personal Info</h1>
       </div>
 
+      {/* Field labels are static, so the form's shape is visible immediately
+          and only the input values fill in — the layout never shifts. */}
       {status === 'loading' && (
-        <div className="h-64 animate-pulse rounded-card bg-neutral-100 dark:bg-neutral-900" />
+        <SkeletonRegion label="Loading your details">
+          {['Full Name', 'Email', 'Phone'].map((label) => (
+            <div key={label} className="mb-4">
+              <span className="mb-1.5 block text-sm font-medium text-ink-900 dark:text-white">
+                {label}
+              </span>
+              <Skeleton className="h-[46px] w-full rounded-xl" />
+            </div>
+          ))}
+          <Skeleton className="h-[46px] w-full rounded-xl" />
+        </SkeletonRegion>
       )}
 
       {status === 'error' && (
@@ -63,7 +81,7 @@ export function PersonalInfoPage() {
           <p className="text-sm text-neutral-500 dark:text-neutral-400">Couldn't load your info.</p>
           <button
             type="button"
-            onClick={retry}
+            onClick={refresh}
             className="flex items-center gap-1 text-sm font-medium text-brand-600 dark:text-brand-500"
           >
             <RefreshCw className="size-4" /> Retry

@@ -5,6 +5,7 @@ import { forkJoin } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { destinationsApi, toursApi, type Destination, type Tour } from '@/lib/api';
 import { useApiResource } from '@/hooks/useApiResource';
+import { Skeleton, SkeletonLine, SkeletonRegion } from '@/components/ui/Skeleton';
 import { formatDuration } from '@/lib/format';
 
 // Module M1 — Place of Interest Locator in the Figma design (search,
@@ -98,15 +99,27 @@ export function ExplorePage() {
           </div>
         )}
 
+        {/* Same grid, same card count, same internal layout as the real
+            results below: thumbnail, title, meta line, rating row. */}
         {status === 'loading' && (
-          <div className="space-y-3 md:grid md:grid-cols-2 md:gap-3 md:space-y-0 lg:grid-cols-3">
+          <SkeletonRegion
+            label="Loading places"
+            className="space-y-3 md:grid md:grid-cols-2 md:gap-3 md:space-y-0 lg:grid-cols-3"
+          >
             {Array.from({ length: 3 }, (_, i) => (
               <div
                 key={i}
-                className="h-24 animate-pulse rounded-card bg-neutral-100 dark:bg-neutral-900"
-              />
+                className="flex gap-3 rounded-card border border-neutral-100 bg-white p-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+              >
+                <Skeleton className="size-16 shrink-0 rounded-xl" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <SkeletonLine className="w-3/4" />
+                  <SkeletonLine className="w-1/2" />
+                  <SkeletonLine className="h-3 w-12" />
+                </div>
+              </div>
             ))}
-          </div>
+          </SkeletonRegion>
         )}
 
         {status === 'ready' && category !== 'All' && (

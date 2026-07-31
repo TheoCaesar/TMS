@@ -5,7 +5,7 @@ session, a new person, or future-you). For the full chronological story
 of *why* each decision was made, see [`DEVELOPMENT_LOG.md`](DEVELOPMENT_LOG.md)
 — this file is the "state now," that file is the "how we got here."
 
-**Last updated:** 2026-07-31
+**Last updated:** 2026-07-31 (session 6 — AI itineraries + sockets)
 
 ---
 
@@ -27,8 +27,8 @@ feature/fix, pushed to `origin/dev` only when the user asks.
 
 ## Right now
 
-- **Branch:** `dev`, 2 commits ahead of `origin/dev` (not pushed —
-  push only when asked). `main` is untouched since the initial scaffold.
+- **Branch:** `dev`, ahead of `origin/dev` (not pushed — push only when
+  asked). `main` is untouched since the initial scaffold.
 - **Build health:** `npx tsc -b --noEmit`, `npm run lint` (oxlint), and
   `npm run build` all pass clean as of the last commit.
 - **No blocking bugs in the frontend itself.** The blockers that exist
@@ -51,9 +51,11 @@ you need to point at a different backend.
 **Dev-only CORS workaround:** the live API sends no CORS headers at all
 (see "Known backend issues"), so in dev, API calls are proxied through
 Vite (`vite.config.ts` → `server.proxy['/api']`) to sidestep it
-server-to-server. This does **not** work in a production build — that
-needs a real fix on the backend or a same-origin reverse proxy in front
-of both apps.
+server-to-server. **Socket.IO is proxied the same way**
+(`server.proxy['/socket.io']`, with `ws: true` — without that flag the
+connection silently stays stuck on long-polling instead of upgrading).
+Neither proxy works in a production build — that needs a real fix on the
+backend or a same-origin reverse proxy in front of both apps.
 
 ## Scope reality — read this before building a new screen
 
@@ -62,8 +64,14 @@ mobile app prototype") shows six service modules matching the SRS:
 Explore/POI, Flights, Hotels, Food, Transport, Emergency. **The live API
 (`GET /api/docs-json` for the full OpenAPI spec) only implements Tours** —
 Destinations, Tours + Departures, Bookings, Paystack Payments, Reviews,
-plus Auth/Users/Loyalty. There is no Flight, Accommodation, Restaurant,
-Transport-dispatch, or Emergency-facility endpoint anywhere in the API.
+plus Auth/Users/Loyalty, an **AI itinerary planner**, and image uploads.
+There is no Flight, Accommodation, Restaurant, Transport-dispatch, or
+Emergency-facility endpoint anywhere in the API.
+
+Note that the AI planner is itself scoped to Tours: it plans around the
+real `APPROVED` tours in the system, and any tour the model invents is
+stripped server-side and downgraded to a non-bookable item. So it extends
+the Tours vertical rather than filling any of the missing ones.
 
 Working convention established across every screen so far:
 - Build the UI to match Figma (or a user-supplied screenshot) as closely
@@ -87,6 +95,8 @@ Working convention established across every screen so far:
 | `/payments/callback` | ✅ Built | Handles Paystack redirect; best-guess URL, see below |
 | `/login`, `/register` | ✅ Real, verified E2E | Register matches a captured Figma screen |
 | `/trips` (My Trips / "My Bookings") | ⚠️ Built, unverified happy path | Real data via `GET /bookings/me`, but that endpoint 500s (see below) — only the error/retry state has been visually confirmed |
+| `/itineraries` | ✅ Real data, verified E2E | AI trip planner. Generate form + saved list (`POST /itineraries/generate`, `GET/DELETE /itineraries`). Reached from Home's Quick Access |
+| `/itineraries/:id` | ✅ Real data, verified E2E | Day-by-day plan grouped by morning/afternoon/evening; `bookable` items deep-link to `/explore/:slug` — followed in-browser through to a real bookable departure |
 | `/profile` | ✅ Real data, verified E2E | Header + settings menu from a user screenshot |
 | `/profile/personal-info` | ✅ Real data + save, verified E2E | The one settings row with backend support (`PATCH /users/me`) |
 | `/flights`, `/hotels`, `/food` | 🟡 Placeholder | `PlaceholderPage` only — no Figma capture yet, no backend either |
@@ -96,15 +106,19 @@ Working convention established across every screen so far:
 
 ## Known backend issues (not fixable from the frontend)
 
+Items 1 and 2 were **re-confirmed on 2026-07-31** — both still broken.
+
 1. **CORS is unconfigured** — zero `Access-Control-Allow-Origin` headers
    on any response, even with a browser `Origin` set. Blocks every
    browser-based caller, on any origin, in production. Confirmed with
-   `curl -D -`. The dev Vite proxy is a workaround for local development
-   only.
+   `curl -D -` (`vary: Origin` *is* sent, so the server is evaluating the
+   origin and rejecting it). The dev Vite proxy is a workaround for local
+   development only.
 2. **`GET /bookings/me` reliably 500s**, even for an account with a real
    booking (confirmed via `curl` directly, not just in-app). Originally
-   thought to be an empty-list edge case; it isn't. This blocks
-   verifying `/trips`'s real card-rendering happy path.
+   thought to be an empty-list edge case; it isn't — it also 500s for
+   every documented `status` filter value. This blocks verifying
+   `/trips`'s real card-rendering happy path.
 3. **`POST /payments/initiate`** — was 500ing consistently, then
    succeeded once during testing (real redirect to a genuine Paystack
    test-mode checkout, correct amount/customer). Unclear if it's fixed
@@ -134,6 +148,21 @@ endpoint exists to clean them up):
   request. `src/hooks/useApiResource.ts` is the shared
   fetch-with-loading/error/retry hook every data-driven page uses —
   reach for it before writing a new one-off fetch pattern.
+- **Real-time is Observables too** (`src/lib/api/socket.ts`). Both
+  Socket.IO namespaces are wrapped as cold `Observable`s — nothing
+  connects until subscribe, unsubscribing disconnects — so they drive
+  straight from a `useEffect` and match the RxJS convention above.
+  **Governing rule: sockets are an enhancement, REST is the source of
+  truth.** Every consumer swallows socket errors; a dead socket must
+  never blank a screen. Consumers today: `BookingDetailPage` (live
+  `PENDING → CONFIRMED`) and `TourDetailPage` (live `seatsLeft`).
+  *Known limitation:* the handshake uses whatever access token was
+  current at connect time and won't itself trigger the REST refresh flow.
+- **`apiRequest$` accepts `timeoutMs`** for calls expected to be slow.
+  Only `generateItinerary$` sets one (120s) — the AI planner is
+  synchronous and **measured at ~66s**, and browser `fetch` has no
+  default timeout, so a hung request would otherwise spin forever.
+  Surfaces as `ApiError(408)`.
 - **`src/types/` vs `src/lib/api/types.ts`**: the former is the SRS's
   full 6-module aspirational model (kept for documentation/reference);
   the latter is what the live API actually returns. Some names
@@ -150,11 +179,36 @@ endpoint exists to clean them up):
   containing block for `position: fixed` children (nav, SOS button,
   sticky booking bar) so they stay anchored to that column at any
   breakpoint instead of the full viewport.
-- **Known gap, not yet fixed**: no shared auth state. Each
-  `useCurrentUser()` call fetches independently on its own mount, so
-  `TopNav`'s user chip doesn't update after an in-app login/register
-  without a full page reload (a fresh navigation works fine). Worth
-  fixing with a context/store before this matters for real users.
+- **Shared auth state** (`src/lib/auth.tsx` + `src/hooks/useAuth.ts`).
+  `<AuthProvider>` wraps the app in `main.tsx` and owns the one
+  `GET /users/me` for the whole session; `useAuth()` returns
+  `{ user, loading, refresh, signOut }`. **Use it instead of fetching the
+  profile in a page** — the old `useCurrentUser` hook (now deleted)
+  fetched independently on every mount, so `TopNav` plus any page that
+  also wanted the user fired two concurrent requests on every screen.
+  Call `refresh()` after login/register or `PATCH /users/me`; the nav now
+  updates in place with no reload (verified in a real browser). The
+  context and hook are split across two files purely so `auth.tsx`
+  exports only a component, which Fast Refresh requires.
+- **Concurrent identical GETs are pooled** in `client.ts`
+  (`shareInFlight$`). Two components asking for the same URL at the same
+  time share one HTTP request. This is an in-flight pool, **not a
+  response cache** — the entry is evicted the moment the response
+  settles, so the next caller always gets fresh data. Only GETs are
+  pooled (sharing a mutation would collapse two distinct intents), and
+  requests with a `timeoutMs` opt out to keep their cancellation.
+  *Trade-off:* a pooled GET no longer aborts at the network level when
+  its last subscriber unsubscribes. The protection that matters is
+  unaffected — `useApiResource` still unsubscribes, so a slow stale
+  response can never write state.
+- **On React StrictMode:** in dev, React deliberately mounts → unmounts →
+  remounts every component. Before the GET pooling above, that aborted
+  each initial request and issued a second one, which showed up in
+  devtools as a red cancelled request followed by a real one — harmless
+  and dev-only, but easy to misread as a failure-and-retry. The pool
+  absorbs it: the remount re-attaches to the same in-flight request.
+  StrictMode is deliberately kept on for its impure-render and
+  missing-cleanup warnings.
 
 ## Open questions (need the user, not guessable)
 
@@ -182,14 +236,44 @@ Note: the mouse wheel doesn't reliably scroll the Figma prototype's
 iframe — drag the visible right-side scrollbar thumb instead
 (`left_click_drag`).
 
+## Known API-layer bugs (found 2026-07-31, not yet fixed)
+
+Found while auditing against the backend integration guide; left alone
+because that session was scoped to itineraries + sockets.
+
+1. **`listMyBookings$` filter enum is wrong** (`src/lib/api/bookings.ts`).
+   It types `status` as `BookingStatus` (`PENDING`/`CONFIRMED`/…), but the
+   API only accepts `upcoming | completed | cancelled` — `?status=PENDING`
+   returns a `400`. Harmless *today* only because `TripsPage` calls it with
+   no argument and filters client-side; it would break the moment anyone
+   passes the filter.
+2. `verifyPayment$` returns `unknown` — the guide defines a real `Payment`
+   shape (`providerRef`, `status`, `amountMinor`, `currency`).
+3. `DepartureStatus` includes a `CLOSED` member the spec doesn't have.
+4. **Reviews are dead code.** `listTourReviews$`/`createReview$` are written
+   and exported but nothing calls them. `TourDetailPage` shows
+   `ratingAvg`/`ratingCount` without ever listing the reviews behind them,
+   and there's no way to review a `COMPLETED` booking. This is the largest
+   remaining *already-supported* backend surface with no UI.
+
 ## Immediate next steps (in rough priority order)
 
-1. Get Figma/screenshot reference for **Emergency** — it's safety-critical
+1. Build the **Reviews UI** (see bug 4 above) — the API client is already
+   written, so this is UI-only work against a working backend.
+2. Get Figma/screenshot reference for **Emergency** — it's safety-critical
    per the SRS and shouldn't stay a placeholder.
-2. Resolve the `/bookings` open question above.
-3. Re-test `POST /payments/initiate` and `GET /bookings/me` — if fixed,
+3. Resolve the `/bookings` open question above.
+4. Re-test `POST /payments/initiate` and `GET /bookings/me` — if fixed,
    verify `/trips`'s real card rendering (currently unconfirmed) and
-   re-confirm the Paystack payment flow.
-4. Flights, Hotels, Food — same pattern as the above once reference
+   confirm the live `PENDING → CONFIRMED` socket transition end-to-end
+   with a real Paystack test checkout.
+5. Fix API-layer bugs 1–3 above.
+6. Flights, Hotels, Food — same pattern as the above once reference
    material exists.
-5. Consider shared auth state (see "Known gap" above).
+
+**Browser testing is available** — `playwright-core` driving the installed
+Google Chrome (`/Applications/Google Chrome.app/...`) works without
+downloading browser binaries, and was used to verify the above. One gotcha:
+`waitForLoadState('networkidle')` resolves instantly after an SPA
+client-side navigation, so it will happily capture a still-loading
+skeleton. Wait on real content (`waitForSelector` on actual text) instead.
