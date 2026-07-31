@@ -1,6 +1,6 @@
 import type { Observable } from 'rxjs';
 import { apiRequest$ } from './client';
-import type { InitiatePaymentInput } from './types';
+import type { InitiatePaymentInput, Payment } from './types';
 
 // Verified against a real response (booking TUR-2026-0005): authorizationUrl
 // correctly redirects to a live Paystack test-mode checkout for the right
@@ -16,6 +16,6 @@ export function initiatePayment$(input: InitiatePaymentInput): Observable<Initia
   return apiRequest$<InitiatePaymentResult>('/payments/initiate', { method: 'POST', body: input });
 }
 
-export function verifyPayment$(reference: string): Observable<unknown> {
-  return apiRequest$(`/payments/${reference}/verify`);
+export function verifyPayment$(reference: string): Observable<Payment> {
+  return apiRequest$<Payment>(`/payments/${reference}/verify`);
 }
