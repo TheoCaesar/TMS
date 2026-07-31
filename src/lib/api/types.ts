@@ -101,6 +101,17 @@ export interface Booking {
   currency: string;
   status: BookingStatus;
   createdAt: string;
+  // Undocumented in the integration guide but really returned: a summary of
+  // what was booked. Worth knowing about -- it carries the tour title that
+  // TripsPage currently reconstructs by cross-referencing every tour's
+  // departures.
+  item?: {
+    id: string;
+    slug: string;
+    title: string;
+    imageUrl?: string;
+    startsAt: string;
+  };
 }
 
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
