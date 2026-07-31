@@ -93,24 +93,29 @@ export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
 // covers PENDING + CONFIRMED). Passing 'PENDING' returns a 400.
 export type BookingListFilter = 'upcoming' | 'completed' | 'cancelled';
 
+// GET /bookings/me returns UNIFIED trips: tours plus stay/flight/table
+// reservations. `itemType` discriminates them, and the tour-only fields are
+// optional because a hotel or flight row simply doesn't carry them.
+export type BookableType = 'TOUR' | 'STAY' | 'FLIGHT' | 'TABLE';
+
 export interface Booking {
   reference: string;
-  departureId: string;
-  seats: number;
+  itemType?: BookableType; // absent on the single-booking endpoint
   totalMinor: number;
   currency: string;
   status: BookingStatus;
   createdAt: string;
-  // Undocumented in the integration guide but really returned: a summary of
-  // what was booked. Worth knowing about -- it carries the tour title that
-  // TripsPage currently reconstructs by cross-referencing every tour's
-  // departures.
+  // Tour bookings only.
+  departureId?: string;
+  seats?: number;
+  // Display summary of whatever was booked.
   item?: {
     id: string;
-    slug: string;
+    slug?: string;
     title: string;
+    subtitle?: string;
     imageUrl?: string;
-    startsAt: string;
+    startsAt?: string;
   };
 }
 

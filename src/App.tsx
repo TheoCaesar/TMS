@@ -29,6 +29,7 @@ import { AdminModerationPage } from '@/modules/admin/pages/AdminModerationPage';
 import { AdminDestinationsPage } from '@/modules/admin/pages/AdminDestinationsPage';
 import { RoleGate } from '@/components/layout/RoleGate';
 import { ScrollToTop } from '@/components/layout/ScrollToTop';
+import { RequireAuth } from '@/components/layout/RequireAuth';
 import { ROUTES } from '@/lib/routes';
 
 function App() {
@@ -38,7 +39,20 @@ function App() {
           outside AppLayout. */}
       <ScrollToTop />
       <Routes>
+      {/* Emergency is the ONE signed-out page inside the shell: it must work
+          with an expired session (SRS FR-EMRG-08), and its endpoints are
+          public for exactly that reason. Everything else requires a login. */}
       <Route element={<AppLayout />}>
+        <Route path={ROUTES.emergency} element={<EmergencyPage />} />
+      </Route>
+
+      <Route
+        element={
+          <RequireAuth>
+            <AppLayout />
+          </RequireAuth>
+        }
+      >
         <Route path={ROUTES.home} element={<HomePage />} />
         <Route path={ROUTES.explore} element={<ExplorePage />} />
         <Route path={`${ROUTES.explore}/:slug`} element={<TourDetailPage />} />
@@ -50,7 +64,6 @@ function App() {
         <Route path={`${ROUTES.food}/:slug`} element={<RestaurantDetailPage />} />
         <Route path={ROUTES.transport} element={<TransportBookingPage />} />
         <Route path={ROUTES.transportActiveRide} element={<ActiveRidePage />} />
-        <Route path={ROUTES.emergency} element={<EmergencyPage />} />
         <Route path={ROUTES.trips} element={<TripsPage />} />
         {/* /bookings and /trips were the same screen; /trips is the built,
             wired one ("My Bookings"). The list route redirects rather than

@@ -9,9 +9,10 @@ import type { UploadResult } from './types';
 //   400 -- the file isn't an image
 //   503 -- Cloudinary isn't configured on the server
 //
-// Role caveat (integration guide §10.1): this requires OPERATOR or ADMIN.
-// A TOURIST gets a 403, so profile avatars can't be uploaded here -- they
-// need an externally hosted URL until the backend opens the endpoint up.
+// The old OPERATOR/ADMIN-only restriction is GONE -- the endpoint is now
+// open to any authenticated role (verified with a TOURIST token, which got
+// a 201 and a real Cloudinary URL back). Tourist avatars can be uploaded
+// directly; no externally hosted URL needed any more.
 export function uploadImage$(file: File): Observable<UploadResult> {
   const form = new FormData();
   form.append('file', file);

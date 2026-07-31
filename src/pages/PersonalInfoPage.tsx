@@ -1,7 +1,7 @@
-import { ChevronLeft, RefreshCw } from 'lucide-react';
+import { Camera, ChevronLeft, RefreshCw } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { ApiError, usersApi } from '@/lib/api';
+import { ApiError, uploadsApi, usersApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { Skeleton, SkeletonRegion } from '@/components/ui/Skeleton';
 import { TextField } from '@/components/ui/TextField';
@@ -21,6 +21,44 @@ export function PersonalInfoPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  // Avatar upload became possible when the backend opened /uploads/image to
+  // any authenticated role (it was OPERATOR/ADMIN-only). Two steps: upload
+  // the file for a hosted URL, then PATCH that URL onto the profile.
+  const [uploading, setUploading] = useState(false);
+
+  function handleAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    setSaved(false);
+    uploadsApi.uploadImage$(file).subscribe({
+      next: (result) => {
+        usersApi.updateMe$({ avatarUrl: result.url }).subscribe({
+          next: () => {
+            setUploading(false);
+            setSaved(true);
+            refresh();
+          },
+          error: (err: unknown) => {
+            setError(err instanceof ApiError ? err.message : 'Could not save your photo.');
+            setUploading(false);
+          },
+        });
+      },
+      error: (err: unknown) => {
+        setError(
+          err instanceof ApiError
+            ? err.code === 503
+              ? 'Image uploads are not configured on the server.'
+              : err.message
+            : 'Could not upload that image.',
+        );
+        setUploading(false);
+      },
+    });
+    e.target.value = '';
+  }
 
   useEffect(() => {
     if (profile) {
@@ -94,6 +132,33 @@ export function PersonalInfoPage() {
 
       {status === 'ready' && profile && (
         <form onSubmit={handleSubmit}>
+          <div className="mb-6 flex items-center gap-4">
+            <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-50 text-2xl font-bold text-brand-600 dark:bg-brand-700/20">
+              {profile.avatarUrl ? (
+                <img src={profile.avatarUrl} alt="" className="size-full object-cover" />
+              ) : (
+                (profile.fullName.trim().charAt(0).toUpperCase() || '?')
+              )}
+            </div>
+            <label className="cursor-pointer">
+              <span
+                className={`flex items-center gap-1.5 rounded-xl border border-neutral-200 px-4 py-2.5 text-sm font-medium text-ink-900 transition hover:border-brand-500 dark:border-neutral-700 dark:text-white ${
+                  uploading ? 'opacity-60' : ''
+                }`}
+              >
+                <Camera className="size-4" />
+                {uploading ? 'Uploading…' : profile.avatarUrl ? 'Change photo' : 'Add photo'}
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                disabled={uploading}
+                onChange={handleAvatar}
+                className="sr-only"
+              />
+            </label>
+          </div>
+
           <TextField
             label="Full Name"
             value={fullName}

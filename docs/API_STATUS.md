@@ -56,6 +56,28 @@ Legend — **Wired**: called by the app · **UI**: has a screen using it ·
 
 ---
 
+## ⚠️ Two capabilities re-opened (2026-07-31, later pass)
+
+The published docs changed two things I had previously reported as blocked.
+Both verified live:
+
+1. **`GET /bookings/me` is now UNIFIED** — "My unified trips (tours +
+   reservations)", with a `type` filter (`TOUR|STAY|FLIGHT|TABLE`).
+   Confirmed: 12 rows across all four types. This **broke `/trips`**, which
+   was written for tour-only rows — it rendered "undefined seats" for hotels,
+   deep-linked stays to `/explore/:slug`, and cancelled everything through
+   `/bookings/:ref/cancel` (reservations need `/reservations/:ref/cancel`).
+   All three fixed; `Booking` is now polymorphic with optional
+   `seats`/`departureId`.
+2. **`POST /uploads/image` is open to ANY authed role** (was OPERATOR/ADMIN).
+   Verified with a TOURIST token: `201` + a real Cloudinary URL. Avatar
+   upload is wired into `/profile/personal-info`.
+
+Also completed from the docs: Explore's **Restaurants** and **Hotels**
+category pills now navigate to those real modules instead of filtering
+nothing. **Attractions** stays inert — `Tour` still has no `category` field,
+which remains the one genuine gap on that screen.
+
 ## Inventory — 50 endpoints, where each one stands
 
 **40 of 50 are wired into `src/lib/api/`. 10 are not.** Every endpoint below

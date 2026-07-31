@@ -16,6 +16,7 @@ import { getTokens, usersApi } from '@/lib/api';
 import { useApiResource } from '@/hooks/useApiResource';
 import { SkeletonChip, SkeletonCircle, SkeletonLine, SkeletonRegion } from '@/components/ui/Skeleton';
 import { useAuth } from '@/hooks/useAuth';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { ROUTES } from '@/lib/routes';
 import { PersonalInfoPage } from '@/pages/PersonalInfoPage';
 
@@ -159,6 +160,13 @@ function ProfileContent() {
               </button>
             </div>
           )}
+
+          {/* Desktop gets the icon toggle in TopNav; mobile has no top bar,
+              so the full three-way picker lives here. */}
+          <div className="mb-4 flex items-center justify-between gap-4 rounded-card border border-neutral-100 px-4 py-3 dark:border-neutral-800">
+            <span className="font-medium text-ink-900 dark:text-white">Appearance</span>
+            <ThemeToggle variant="segmented" />
+          </div>
 
           <div className="mb-4 overflow-hidden rounded-card border border-neutral-100 dark:border-neutral-800">
             {menuRows.map((row, i) => {

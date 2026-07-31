@@ -1,10 +1,21 @@
-import { Leaf, Map, MapPin, RefreshCw, Search, Star, Utensils } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Leaf, MapPin, RefreshCw, Search, Star, Utensils, X } from 'lucide-react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { restaurantsApi, type DietaryTag, type Restaurant } from '@/lib/api';
 import { useApiResource } from '@/hooks/useApiResource';
 import { Skeleton, SkeletonLine, SkeletonRegion } from '@/components/ui/Skeleton';
 import { ROUTES } from '@/lib/routes';
+import type { LatLng } from '@/lib/geo';
+import type { MapMarker } from '@/components/map/MapView';
+
+// Same lazy-loading as Explore: MapLibre is ~800 KB before gzip, so it
+// stays out of the entry bundle and the Skeleton below holds its space.
+const MapView = lazy(() =>
+  import('@/components/map/MapView').then((m) => ({ default: m.MapView })),
+);
+
+// Accra — only the pre-load framing; fitToMarkers takes over once pins land.
+const ACCRA: LatLng = { lat: 5.6037, lng: -0.187 };
 
 // Module M4 — Food & Drinks (SRS 3.5, FR-FOOD-01 to 11).
 //
@@ -144,10 +155,27 @@ export function FoodDiscoverPage() {
       firstRun.current = false;
       return;
     }
+    setSelectedId(null);
     retryRef.current();
   }, [debouncedQuery, cuisine, priceTier, dietary, openNow]);
 
-  const restaurants = useMemo(() => data?.results ?? [], [data]);
+  const allRestaurants = useMemo(() => data?.results ?? [], [data]);
+
+  // A pin click narrows the list to that one restaurant; the filters above
+  // still drive what's on the map.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const markers = useMemo<MapMarker[]>(
+    () =>
+      allRestaurants
+        .filter((r) => r.lat !== undefined && r.lng !== undefined)
+        .map((r) => ({ id: r.id, lat: r.lat, lng: r.lng, label: r.name })),
+    [allRestaurants],
+  );
+  const selectedRestaurant = useMemo(
+    () => allRestaurants.find((r) => r.id === selectedId) ?? null,
+    [allRestaurants, selectedId],
+  );
+  const restaurants = selectedRestaurant ? [selectedRestaurant] : allRestaurants;
 
   // Cuisine pills come from the data itself rather than a hardcoded list, so
   // they can't drift from what the backend actually has. Captured only from
@@ -156,10 +184,10 @@ export function FoodDiscoverPage() {
   // so the update is a proper commit-phase effect.
   const [knownCuisines, setKnownCuisines] = useState<string[]>([]);
   useEffect(() => {
-    if (cuisine || restaurants.length === 0) return;
-    const next = [...new Set(restaurants.map((r) => r.cuisine))].sort();
+    if (cuisine || allRestaurants.length === 0) return;
+    const next = [...new Set(allRestaurants.map((r) => r.cuisine))].sort();
     setKnownCuisines((prev) => (prev.join('|') === next.join('|') ? prev : next));
-  }, [cuisine, restaurants]);
+  }, [cuisine, allRestaurants]);
 
   return (
     <div className="md:mx-auto md:max-w-5xl md:px-6 lg:px-8">
@@ -269,13 +297,36 @@ export function FoodDiscoverPage() {
         </div>
       </section>
 
-      {/* No map/geo endpoint exists yet, so this stays an honest placeholder
-          rather than a button that does nothing. */}
+      {/* Real map: every restaurant carries lat/lng, so each one gets a pin.
+          Clicking a pin filters the list to it. */}
       <div className="px-5 pt-5 md:px-0">
-        <div className="flex w-full flex-col items-center justify-center gap-2 rounded-card bg-neutral-100 py-8 text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
-          <Map className="size-7 text-brand-600" />
-          <span className="text-sm font-medium">Map view coming soon</span>
-        </div>
+        <Suspense fallback={<Skeleton className="h-56 w-full rounded-card md:h-96 lg:h-[28rem]" />}>
+          <MapView
+            center={ACCRA}
+            zoom={11}
+            markers={markers}
+            selectedId={selectedId}
+            onMarkerSelect={setSelectedId}
+            fitToMarkers={!selectedId}
+            ariaLabel="Map of restaurants"
+            className="h-56 w-full rounded-card md:h-96 lg:h-[28rem]"
+          />
+        </Suspense>
+
+        {selectedRestaurant && (
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-card border border-brand-500/30 bg-brand-50 px-4 py-3 dark:bg-brand-700/15">
+            <span className="min-w-0 truncate text-sm text-ink-900 dark:text-white">
+              Showing <span className="font-semibold">{selectedRestaurant.name}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedId(null)}
+              className="flex shrink-0 items-center gap-1 text-sm font-medium text-brand-700 dark:text-brand-500"
+            >
+              <X className="size-4" /> Clear
+            </button>
+          </div>
+        )}
       </div>
 
       <section className="px-5 py-6 md:px-0">

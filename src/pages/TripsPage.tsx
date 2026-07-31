@@ -1,19 +1,22 @@
-import { CalendarDays, Compass, Eye, MapPin, RefreshCw, Ticket, Users, X } from 'lucide-react';
+import { Building2, CalendarDays, Compass, Eye, MapPin, Plane, RefreshCw, Ticket, UtensilsCrossed, Users, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import type { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { Link } from 'react-router-dom';
-import { bookingsApi, type Booking, type BookingStatus } from '@/lib/api';
+import { bookingsApi, restaurantsApi, type BookableType, type Booking, type BookingStatus } from '@/lib/api';
 import { useApiResource } from '@/hooks/useApiResource';
 import { Skeleton, SkeletonChip, SkeletonLine, SkeletonRegion } from '@/components/ui/Skeleton';
 import { formatDate, formatMoney, formatTime } from '@/lib/format';
 import { ROUTES } from '@/lib/routes';
 
-// "My Trips" — real data from GET /bookings/me.
+// "My Trips" — GET /bookings/me returns **unified** trips: tours plus
+// stay / flight / table reservations, discriminated by `itemType`.
 //
-// The booking payload now embeds an `item` summary (title, imageUrl,
-// startsAt), so this no longer cross-references every tour's departures to
-// resolve a title — that was an O(tours) request fan-out per page load.
-// It also means cards can show the real hero image and the actual trip
-// date rather than the date the booking was created.
+// Two things follow from that and are easy to get wrong:
+//  1. `seats` and `departureId` are TOUR-only, so a hotel row must not
+//     render "undefined seats".
+//  2. Cancelling uses a different endpoint per family — tours go to
+//     /bookings/:ref/cancel, everything else to /reservations/:ref/cancel.
 const tabs = ['Upcoming', 'Completed', 'Cancelled'] as const;
 type Tab = (typeof tabs)[number];
 
@@ -43,6 +46,14 @@ function statusLabel(status: BookingStatus): string {
   return status.charAt(0) + status.slice(1).toLowerCase();
 }
 
+// Per-family icon and the route its "view the thing" action should open.
+const typeMeta: Record<BookableType, { icon: typeof Compass; label: string; route?: string }> = {
+  TOUR: { icon: Compass, label: 'Tour', route: ROUTES.explore },
+  STAY: { icon: Building2, label: 'Stay', route: ROUTES.hotels },
+  FLIGHT: { icon: Plane, label: 'Flight' }, // no per-offer page to link to
+  TABLE: { icon: UtensilsCrossed, label: 'Table', route: ROUTES.food },
+};
+
 function BookingCard({
   booking,
   cancelling,
@@ -50,9 +61,12 @@ function BookingCard({
 }: {
   booking: Booking;
   cancelling: boolean;
-  onCancel: (reference: string) => void;
+  onCancel: (booking: Booking) => void;
 }) {
   const item = booking.item;
+  const type = booking.itemType ?? 'TOUR';
+  const meta = typeMeta[type] ?? typeMeta.TOUR;
+  const Icon = meta.icon;
   const cancellable = booking.status === 'PENDING' || booking.status === 'CONFIRMED';
   // The trip's own date is what a traveller cares about; fall back to when
   // the booking was made only if the API didn't send one.
@@ -75,7 +89,7 @@ function BookingCard({
                 className="size-full object-cover transition duration-300 group-hover:scale-105"
               />
             ) : (
-              <Compass className="size-6" />
+              <Icon className="size-6" />
             )}
           </div>
 
@@ -96,10 +110,19 @@ function BookingCard({
                 <CalendarDays className="size-4 shrink-0" />
                 {formatDate(when)} · {formatTime(when)}
               </span>
-              <span className="flex items-center gap-1.5">
-                <Users className="size-4 shrink-0" />
-                {booking.seats} {booking.seats === 1 ? 'seat' : 'seats'}
-              </span>
+              {booking.seats !== undefined ? (
+                <span className="flex items-center gap-1.5">
+                  <Users className="size-4 shrink-0" />
+                  {booking.seats} {booking.seats === 1 ? 'seat' : 'seats'}
+                </span>
+              ) : (
+                item?.subtitle && (
+                  <span className="flex items-center gap-1.5">
+                    <Icon className="size-4 shrink-0" />
+                    {item.subtitle}
+                  </span>
+                )
+              )}
             </div>
 
             <div className="mt-2 flex items-center justify-between gap-3">
@@ -115,24 +138,27 @@ function BookingCard({
         </div>
 
         <div className="flex divide-x divide-neutral-100 border-t border-neutral-100 dark:divide-neutral-800 dark:border-neutral-800">
+          {/* Only tour bookings have a detail screen (payment, review). */}
           <Link
-            to={`${ROUTES.bookings}/${booking.reference}`}
+            to={type === 'TOUR' ? `${ROUTES.bookings}/${booking.reference}` : (meta.route ?? ROUTES.trips)}
             className="flex flex-1 items-center justify-center gap-1.5 py-3 text-sm font-medium text-brand-600 transition hover:bg-brand-50 dark:text-brand-500 dark:hover:bg-brand-700/10"
           >
             <Eye className="size-4" /> View
           </Link>
-          {item?.slug && (
+          {/* Flights have no per-offer page, so that family gets no link
+              rather than one pointing somewhere wrong. */}
+          {item?.slug && meta.route && (
             <Link
-              to={`${ROUTES.explore}/${item.slug}`}
+              to={`${meta.route}/${item.slug}`}
               className="flex flex-1 items-center justify-center gap-1.5 py-3 text-sm font-medium text-neutral-500 transition hover:bg-neutral-50 dark:text-neutral-400 dark:hover:bg-neutral-800"
             >
-              <MapPin className="size-4" /> Tour
+              <MapPin className="size-4" /> {meta.label}
             </Link>
           )}
           {cancellable && (
             <button
               type="button"
-              onClick={() => onCancel(booking.reference)}
+              onClick={() => onCancel(booking)}
               disabled={cancelling}
               className="flex flex-1 items-center justify-center gap-1.5 py-3 text-sm font-medium text-danger-500 transition hover:bg-danger-500/5 disabled:opacity-50"
             >
@@ -156,9 +182,17 @@ export function TripsPage() {
   const bookings = useMemo(() => data?.results ?? [], [data]);
   const filtered = useMemo(() => bookings.filter((b) => matchesTab(b, tab)), [bookings, tab]);
 
-  function handleCancel(reference: string) {
+  // Tours and reservations cancel through different endpoints.
+  function handleCancel(booking: Booking) {
+    const reference = booking.reference;
     setCancellingRef(reference);
-    bookingsApi.cancelBooking$(reference).subscribe({
+    // Both return a payload we don't use — the list is refetched instead —
+    // so they're mapped to a common void observable.
+    const cancel$: Observable<void> =
+      (booking.itemType ?? 'TOUR') === 'TOUR'
+        ? bookingsApi.cancelBooking$(reference).pipe(map(() => undefined))
+        : restaurantsApi.cancelReservation$(reference).pipe(map(() => undefined));
+    cancel$.subscribe({
       next: retry,
       error: () => setCancellingRef(null),
       complete: () => setCancellingRef(null),
