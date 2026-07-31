@@ -194,7 +194,7 @@ export function BookingDetailPage() {
         </div>
       )}
 
-      {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (
+      {(booking?.status === 'PENDING' || booking?.status === 'CONFIRMED') && (
         <div className="mt-5">
           {cancelError && <p className="mb-3 text-sm text-danger-500">{cancelError}</p>}
           {confirmingCancel ? (
