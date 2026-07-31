@@ -1,3 +1,13 @@
+// First + last name initials only (e.g. "RxJS Updated User" -> "RU") —
+// middle names are ignored. Falls back to a single initial for a one-word
+// name, and "?" if there's nothing to work with.
+export function getInitials(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
 export function formatMoney(minorUnits: number, currency: string): string {
   return new Intl.NumberFormat('en', { style: 'currency', currency }).format(minorUnits / 100);
 }

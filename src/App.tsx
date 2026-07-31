@@ -45,8 +45,9 @@ function App() {
         <Route path={`${ROUTES.bookings}/:reference`} element={<BookingDetailPage />} />
         <Route path={ROUTES.itineraries} element={<ItinerariesPage />} />
         <Route path={`${ROUTES.itineraries}/:id`} element={<ItineraryDetailPage />} />
-        <Route path={ROUTES.profile} element={<ProfilePage />} />
-        <Route path={ROUTES.profilePersonalInfo} element={<PersonalInfoPage />} />
+        <Route path={ROUTES.profile} element={<ProfilePage />}>
+          <Route path="personal-info" element={<PersonalInfoPage />} />
+        </Route>
         <Route path={ROUTES.auth.login} element={<LoginPage />} />
         <Route path={ROUTES.auth.register} element={<RegisterPage />} />
         <Route path={ROUTES.auth.forgotPassword} element={<ForgotPasswordPage />} />

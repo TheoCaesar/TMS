@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { navTabs } from './navTabs';
 import { ROUTES } from '@/lib/routes';
 import { useAuth } from '@/hooks/useAuth';
+import { getInitials } from '@/lib/format';
 
 // Tablet/desktop only (md+) — mobile uses BottomNav instead. No Figma
 // desktop reference exists; built consistent with the mobile nav's
@@ -46,9 +47,10 @@ export function TopNav() {
         {user ? (
           <NavLink
             to={ROUTES.profile}
-            className="rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium text-ink-900 dark:bg-neutral-900 dark:text-white"
+            aria-label={user.fullName}
+            className="flex size-9 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold text-ink-900 dark:bg-neutral-900 dark:text-white"
           >
-            {user.fullName.split(' ')[0]}
+            {getInitials(user.fullName)}
           </NavLink>
         ) : (
           <NavLink
