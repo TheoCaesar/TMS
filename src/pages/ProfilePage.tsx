@@ -12,9 +12,10 @@ import {
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { forkJoin } from 'rxjs';
-import { authApi, getTokens, usersApi } from '@/lib/api';
+import { getTokens, usersApi } from '@/lib/api';
 import { useApiResource } from '@/hooks/useApiResource';
+import { SkeletonChip, SkeletonCircle, SkeletonLine, SkeletonRegion } from '@/components/ui/Skeleton';
+import { useAuth } from '@/hooks/useAuth';
 import { ROUTES } from '@/lib/routes';
 
 // Built from a user-supplied screenshot of the settings menu ("profile-b");
@@ -62,59 +63,80 @@ function LoggedOutPrompt() {
 
 function ProfileContent() {
   const navigate = useNavigate();
-  const { data, status, retry } = useApiResource(() =>
-    forkJoin({ profile: usersApi.getMe$(), loyalty: usersApi.getMyLoyalty$() }),
-  );
+  // The profile comes from the shared auth context — fetching it again here
+  // would duplicate a request the app has already made. Only loyalty, which
+  // nothing else needs, is fetched by this page.
+  const { user: profile, signOut } = useAuth();
+  const { data: loyalty, status, retry } = useApiResource(() => usersApi.getMyLoyalty$());
 
   function handleLogOut() {
-    authApi.logout$().subscribe(() => navigate(ROUTES.home));
+    signOut();
+    navigate(ROUTES.home);
   }
 
-  if (status === 'loading') {
-    return (
-      <div className="space-y-3 p-5 md:mx-auto md:max-w-md">
-        <div className="h-24 animate-pulse rounded-card bg-neutral-100 dark:bg-neutral-900" />
-        <div className="h-64 animate-pulse rounded-card bg-neutral-100 dark:bg-neutral-900" />
-      </div>
-    );
-  }
+  const initial = profile?.fullName.trim().charAt(0).toUpperCase() || '?';
 
-  if (status === 'error' || !data) {
-    return (
-      <div className="flex flex-col items-center gap-3 p-8 text-center">
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">Couldn't load your profile.</p>
-        <button
-          type="button"
-          onClick={retry}
-          className="flex items-center gap-1 text-sm font-medium text-brand-600 dark:text-brand-500"
-        >
-          <RefreshCw className="size-4" /> Retry
-        </button>
-      </div>
-    );
-  }
-
-  const { profile, loyalty } = data;
-  const initial = profile.fullName.trim().charAt(0).toUpperCase() || '?';
-
+  // The settings menu and Log Out button are entirely static — they render
+  // on the first frame and never wait on a fetch. Only the header card's
+  // avatar, name, email and loyalty pill resolve.
   return (
     <div className="px-5 py-6 md:mx-auto md:max-w-md md:py-10">
       <div className="mb-6 flex items-center gap-4 rounded-card border border-neutral-100 p-4 dark:border-neutral-800">
-        <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-50 text-2xl font-bold text-brand-600 dark:bg-brand-700/20">
-          {profile.avatarUrl ? (
-            <img src={profile.avatarUrl} alt={profile.fullName} className="size-full object-cover" />
+        {profile ? (
+          <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-50 text-2xl font-bold text-brand-600 dark:bg-brand-700/20">
+            {profile.avatarUrl ? (
+              <img src={profile.avatarUrl} alt={profile.fullName} className="size-full object-cover" />
+            ) : (
+              initial
+            )}
+          </div>
+        ) : (
+          <SkeletonCircle className="size-16 shrink-0" />
+        )}
+
+        <div className="min-w-0 flex-1">
+          {profile ? (
+            <>
+              <div className="truncate font-bold text-ink-900 dark:text-white">{profile.fullName}</div>
+              <div className="truncate text-sm text-neutral-500 dark:text-neutral-400">
+                {profile.email}
+              </div>
+            </>
           ) : (
-            initial
+            // No gap and matched line boxes (h-6 for the bold name at
+            // text-base, h-5 for the email at text-sm) so the loyalty pill
+            // below doesn't move when these resolve.
+            <SkeletonRegion label="Loading profile">
+              <SkeletonLine boxClassName="h-6" className="w-36" />
+              <SkeletonLine className="w-48" />
+            </SkeletonRegion>
+          )}
+
+          {/* Loyalty resolves independently of the profile — its own small
+              boundary, so the name doesn't wait on it or vice versa. */}
+          {loyalty ? (
+            <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-accent-500/10 px-2.5 py-0.5 text-xs font-semibold text-accent-500">
+              {loyalty.tier} · {loyalty.points} pts
+            </div>
+          ) : (
+            // h-5 matches the real pill's text-xs + py-0.5 box.
+            <SkeletonChip boxClassName="h-5" className="mt-1.5 w-28" />
           )}
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-bold text-ink-900 dark:text-white">{profile.fullName}</div>
-          <div className="truncate text-sm text-neutral-500 dark:text-neutral-400">{profile.email}</div>
-          <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-accent-500/10 px-2.5 py-0.5 text-xs font-semibold text-accent-500">
-            {loyalty.tier} · {loyalty.points} pts
-          </div>
-        </div>
       </div>
+
+      {status === 'error' && (
+        <div className="mb-4 flex items-center justify-between rounded-card border border-neutral-100 bg-neutral-50 px-4 py-3 text-sm text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
+          <span>Couldn't load your loyalty points.</span>
+          <button
+            type="button"
+            onClick={retry}
+            className="flex items-center gap-1 font-medium text-brand-600 dark:text-brand-500"
+          >
+            <RefreshCw className="size-4" /> Retry
+          </button>
+        </div>
+      )}
 
       <div className="mb-4 overflow-hidden rounded-card border border-neutral-100 dark:border-neutral-800">
         {menuRows.map((row, i) => {

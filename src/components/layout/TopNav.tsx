@@ -2,13 +2,13 @@ import { AlertCircle } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { navTabs } from './navTabs';
 import { ROUTES } from '@/lib/routes';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useAuth } from '@/hooks/useAuth';
 
 // Tablet/desktop only (md+) — mobile uses BottomNav instead. No Figma
 // desktop reference exists; built consistent with the mobile nav's
 // labels, icons, and brand tokens.
 export function TopNav() {
-  const { user } = useCurrentUser();
+  const { user } = useAuth();
 
   return (
     <header className="sticky top-0 z-20 hidden border-b border-neutral-200 bg-white/90 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/90 md:block">

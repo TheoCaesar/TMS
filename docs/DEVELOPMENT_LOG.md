@@ -563,3 +563,215 @@ rendering anything, matching the pattern used for booking).
 ---
 
 <!-- Append new dated sessions below this line as work continues. -->
+
+## Session 6 — 2026-07-31: AI itinerary planner + real-time sockets
+
+### Context
+
+The user supplied a backend integration guide ("Voyago Backend — Frontend
+Integration Guide") alongside the base URL and Swagger docs. Auditing the
+existing `src/lib/api/` against it and against a fresh pull of
+`GET /api/docs-json` turned up **two whole capabilities the frontend had no
+code for at all**, both confirmed live:
+
+1. **AI itinerary planner** — four endpoints under `/api/v1/itineraries`.
+2. **Socket.IO real-time** — two namespaces, absent from Swagger (they're
+   only documented in the integration guide, §8). `socket.io-client` wasn't
+   even a dependency.
+
+Reviews were a third gap (`src/lib/api/reviews.ts` exists but nothing in the
+UI calls it); the user scoped this session to the two above.
+
+### The AI planner is synchronous and genuinely slow — measured
+
+Before writing any UI, generated a real itinerary against the live API
+(`Cape Coast`, 2 days, party 2, interests history/beaches):
+
+- **`HTTP 201` in 66.1 seconds.** The guide warns ~75s on the configured
+  free model; 66s is the real measured figure. Model reported itself as
+  `openrouter/free`.
+- The response matched the guide's §9 shape exactly — which mattered,
+  because the OpenAPI spec types `plan` as an opaque `additionalProperties`
+  object and is therefore useless for generating types. **`src/lib/api/types.ts`
+  itinerary types were written from the real response, not the spec.**
+- Grounding is real, not a claim: the two `bookable: true` items carried
+  `cape-coast-castle-tour` and `kakum-canopy-walk`, both of which resolve
+  via `GET /tours/:slug` to genuine `APPROVED` tours with live departures.
+
+Two consequences for the UI:
+
+- **A skeleton loader would be wrong here.** A minute of shimmer reads as a
+  hang. `ItinerariesPage` gets a dedicated state that says out loud that it
+  takes about a minute.
+- **`client.ts` needed a timeout option.** Browser `fetch` has none, so a
+  hung request (Render cold start) would spin forever. Added
+  `RequestOptions.timeoutMs`, implemented with RxJS `timeout()` and
+  re-thrown as `ApiError(408)` so callers keep a single error type. Because
+  the pipeline is built on `fromFetch`, the timeout's unsubscribe genuinely
+  aborts the request rather than just ignoring it. `generateItinerary$` uses
+  a 2-minute ceiling; nothing else sets one.
+
+### Sockets exposed as Observables, not raw emitters
+
+`src/lib/api/socket.ts` wraps both namespaces in cold `Observable`s so
+real-time matches the RxJS convention the rest of `src/lib/api/` already
+uses (Session 4). Nothing connects until subscribe; unsubscribing
+disconnects. That makes them safe to drive straight from a `useEffect`.
+
+Verified against the live backend with a throwaway Node probe before
+trusting them in the app:
+
+- `/bookings` with a valid token — **connects over `websocket`** (not
+  degraded long-polling).
+- `/availability` — connects and accepts `departure.subscribe`.
+- **Control case:** an unauthenticated `/bookings` handshake is dropped with
+  `io server disconnect`, exactly as the guide says. Worth knowing that this
+  arrives as a *disconnect*, not a `connect_error` — so an unauthenticated
+  socket goes quiet rather than erroring. Socket.IO does not auto-reconnect
+  after a server-initiated disconnect, so there's no reconnect storm.
+
+The governing rule, written into the module's header comment: **sockets are
+an enhancement, REST is the source of truth.** Every consumer swallows
+socket errors. A socket that never connects must never blank a screen.
+
+`booking.status_changed` on `BookingDetailPage` refetches over REST rather
+than patching state from the event payload — the event is authoritative, but
+refetching keeps one source of truth and reuses the existing rendering
+untouched. The manual "I've already paid — check status" button stays as a
+fallback, since a user returning from Paystack in a fresh tab may not have a
+live socket.
+
+One subtlety worth recording: `useApiResource` returns a fresh `retry`
+closure every render, so subscribing with `retry` in the dependency array
+would reconnect the socket on every state change. `BookingDetailPage` holds
+it in a ref and keys the effect on `reference` alone.
+
+**Known limitation (documented, not fixed):** the handshake carries whatever
+access token was current at connect time. If it expires mid-session the
+server drops the connection; reconnects re-read the token store, but a
+socket won't itself trigger the REST refresh-and-retry flow in `client.ts`.
+
+### Dev proxy now covers `/socket.io` too
+
+Same CORS blocker, same workaround, one addition: **`ws: true` is required**
+on the proxy entry. Without it the handshake succeeds but the connection
+silently stays stuck on HTTP long-polling — a failure mode that looks like
+it works.
+
+### Backend status re-confirmed 2026-07-31 (both still broken)
+
+- **`GET /bookings/me` still 500s.** Retested every variant, including each
+  documented `status` filter value. Also confirmed the frontend's
+  `listMyBookings$` types that filter wrongly (see below).
+- **CORS still unconfigured.** `curl -D -` with `Origin: http://localhost:5173`
+  returns no `access-control-allow-origin` at all. `vary: Origin` is present,
+  so the server is evaluating the origin and rejecting it.
+
+### Bugs found in the existing API layer, deliberately left alone
+
+Out of scope for this session (user scoped it to itineraries + sockets), but
+found while auditing and worth fixing:
+
+1. **`listMyBookings$` filter enum is wrong.** `src/lib/api/bookings.ts`
+   types `status` as `BookingStatus` (`PENDING`/`CONFIRMED`/…), but the API
+   only accepts `upcoming | completed | cancelled` — confirmed:
+   `?status=PENDING` returns `400 status must be one of the following
+   values: upcoming, completed, cancelled`. It doesn't bite today only
+   because `TripsPage` calls it with no argument and filters client-side.
+2. `verifyPayment$` returns `unknown`; the guide defines a real `Payment`
+   shape (`providerRef`, `status`, `amountMinor`, `currency`).
+3. `DepartureStatus` includes a `CLOSED` member the spec doesn't have.
+4. **Reviews are dead code.** `listTourReviews$`/`createReview$` exist and
+   are exported but no component calls them. `TourDetailPage` shows
+   `ratingAvg`/`ratingCount` without ever listing the reviews behind them.
+
+### Verification performed
+
+No browser automation was available this session, so rendering was not
+visually confirmed — but every request path the new code takes was exercised
+against the live backend **through the Vite dev proxy** (i.e. the exact URL
+the app builds):
+
+- Itinerary list / get / delete-shape and the full plan tree.
+- Client-side bound enforcement mirrored server-side: `{destination:"X",
+  days:99}` → `400 destination must be longer than or equal to 2 characters;
+  days must not be greater than 14`.
+- The deep-link payoff: both `bookable: true` slugs resolve to `APPROVED`
+  tours, and `cape-coast-castle-tour` has a `SCHEDULED` departure with 25/25
+  seats — so "Book this tour" lands on a genuinely bookable page.
+- Both socket namespaces (see above).
+- `npx tsc -b --noEmit`, `npm run lint`, `npm run build` all clean.
+
+**Still unverified:** the live `PENDING → CONFIRMED` transition, which needs
+a real Paystack test checkout completed while the booking page is open.
+(Both new pages *were* subsequently verified in a real browser — see below.)
+
+### Follow-up: the "request always fires twice" report
+
+The user noticed that every call appeared in devtools as a failed request
+followed by a successful one, and read it as the API needing a second try.
+
+**It wasn't a failure or a retry.** `<StrictMode>` (`main.tsx`) makes React
+deliberately mount → unmount → remount every component in development.
+`useApiResource`'s cleanup unsubscribes, and because the client is built on
+`fromFetch`, unsubscribing genuinely **aborts** the in-flight fetch — which
+Chrome renders with the same red ⊗ it uses for failures. So the first
+request was cancelled on purpose, and none of it happens in a production
+build. Ruled out other causes first: nothing else double-fires (no page
+calls `retry()` on mount).
+
+**But it was hiding a real bug.** `TopNav` and `HomePage` each called
+`useCurrentUser()` independently, and that hook fetched `GET /users/me` on
+every mount — so Home issued **two concurrent `/users/me` requests in
+production too**, and `/profile` did the same (TopNav's hook plus the page's
+own `getMe$`). This is the "no shared auth state" gap flagged in HANDOFF.md
+since Session 5, showing up as a concrete cost.
+
+Fixed both, per the user's choice:
+
+1. **Shared auth state.** `<AuthProvider>` (`src/lib/auth.tsx`) owns the one
+   `GET /users/me` for the session; `useAuth()` (`src/hooks/useAuth.ts`)
+   exposes `{ user, loading, refresh, signOut }`. `useCurrentUser` deleted;
+   `TopNav`, `HomePage`, `ProfilePage` and `PersonalInfoPage` all read from
+   the context now, and login/register/profile-save call `refresh()`.
+   Context and hook are in a separate file from the provider so `auth.tsx`
+   exports only a component — otherwise Fast Refresh can't hot-reload it
+   (oxlint's `only-export-components` catches this).
+2. **In-flight GET pooling** in `client.ts` (`shareInFlight$`), generalising
+   the `shareReplay(1)` trick already used for token refresh. Concurrent
+   callers of the same URL share one request. It is **not a response
+   cache** — the map entry is evicted as soon as the response settles.
+   Only GETs are pooled (sharing a mutation would collapse two distinct
+   intents), and `timeoutMs` requests opt out to keep their cancellation.
+
+   *Trade-off accepted:* a pooled GET no longer aborts at the network level
+   when its last subscriber leaves, which slightly softens the cancellation
+   benefit celebrated in Session 4. The protection that actually matters is
+   untouched — `useApiResource` still unsubscribes, so a slow stale response
+   can never write state. StrictMode stays on for its real dev warnings.
+
+### Browser verification (Playwright + the installed Chrome)
+
+`playwright-core` drives `/Applications/Google Chrome.app` directly, with no
+browser binaries to download. Results:
+
+- **Every request is now x1.** Home, Profile and Itineraries each issue one
+  call per endpoint, with zero aborted requests and zero console errors —
+  with StrictMode still enabled.
+- **Signed out: zero `/users/me` calls.**
+- **In-app login updates the nav with no reload** — chip goes from "Log in"
+  to the user's name, greeting renders "Good morning, RxJS 👋". That's the
+  Session 5 known gap closed and confirmed.
+- **Both itinerary screens render correctly.** Detail page shows the header,
+  interest chips, summary, days grouped MORNING/AFTERNOON/EVENING, kind
+  badges and correctly divided money (`GHS 80.00` from `8000` pesewas).
+  Exactly **2 "Book this tour" links**, only on the bookable items; the
+  `FREE`/`MEAL` items correctly have none.
+- **The deep-link works end to end**: clicking through lands on
+  `/explore/cape-coast-castle-tour`, the real tour page, showing a live
+  departure with "23 left".
+
+Gotcha worth remembering: `waitForLoadState('networkidle')` resolves
+instantly after an SPA client-side navigation, so a first pass captured the
+loading skeleton — which has no text — and made the detail page look empty.
+Wait on real content instead.

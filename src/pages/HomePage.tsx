@@ -7,16 +7,22 @@ import {
   Plane,
   RefreshCw,
   Search,
+  Sparkles,
   Utensils,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { destinationsApi } from '@/lib/api';
 import { ROUTES } from '@/lib/routes';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useAuth } from '@/hooks/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
+import { Skeleton, SkeletonLine } from '@/components/ui/Skeleton';
 
+// "Plan Trip" (the AI itinerary planner) sits second so that the 7-tile
+// grid's 3/3/1 mobile reflow leaves a lower-priority tile on the orphan
+// row rather than a real feature.
 const quickAccess = [
   { to: ROUTES.explore, label: 'Explore', icon: Compass },
+  { to: ROUTES.itineraries, label: 'Plan Trip', icon: Sparkles },
   { to: ROUTES.flights, label: 'Flights', icon: Plane },
   { to: ROUTES.hotels, label: 'Hotels', icon: Building2 },
   { to: ROUTES.food, label: 'Food', icon: Utensils },
@@ -32,7 +38,7 @@ function timeOfDayGreeting(): string {
 }
 
 export function HomePage() {
-  const { user } = useCurrentUser();
+  const { user } = useAuth();
   const { data: destinationsPage, status: destinationsStatus, retry } = useApiResource(() =>
     destinationsApi.listDestinations$(1, 10),
   );
@@ -58,7 +64,7 @@ export function HomePage() {
 
       <section className="px-5 pt-6 md:px-8">
         <h2 className="mb-3 text-lg font-bold text-ink-900 dark:text-white">Quick Access</h2>
-        <div className="grid grid-cols-3 gap-3 md:grid-cols-6 md:gap-4">
+        <div className="grid grid-cols-3 gap-3 md:grid-cols-4 md:gap-4 lg:grid-cols-7">
           {quickAccess.map(({ to, label, icon: Icon, danger }) => (
             <Link
               key={to}
@@ -94,11 +100,22 @@ export function HomePage() {
         ) : (
           <div className="flex gap-3 overflow-x-auto px-5 pb-2 md:grid md:grid-cols-3 md:overflow-visible md:px-8 lg:grid-cols-4">
             {destinationsStatus === 'loading'
-              ? Array.from({ length: 3 }, (_, i) => (
+              ? // Mirrors the real card: image band on top, name and region
+                // beneath — so nothing reflows when the data lands.
+                Array.from({ length: 3 }, (_, i) => (
                   <div
                     key={i}
-                    className="h-[152px] w-40 shrink-0 animate-pulse rounded-card bg-neutral-100 dark:bg-neutral-900 md:h-44 md:w-auto"
-                  />
+                    role="status"
+                    aria-busy="true"
+                    aria-label="Loading destinations"
+                    className="w-40 shrink-0 overflow-hidden rounded-card bg-neutral-100 dark:bg-neutral-900 md:w-auto md:shrink"
+                  >
+                    <Skeleton className="h-28 rounded-none md:h-32" />
+                    <div className="space-y-2 p-3">
+                      <SkeletonLine className="w-3/4" />
+                      <SkeletonLine className="h-3 w-1/2" />
+                    </div>
+                  </div>
                 ))
               : destinations.map((destination) => (
                   <Link

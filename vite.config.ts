@@ -22,6 +22,15 @@ export default defineConfig({
         target: 'https://tms-api-m7yf.onrender.com',
         changeOrigin: true,
       },
+      // Socket.IO (src/lib/api/socket.ts) is blocked by the same missing
+      // CORS headers, so it's proxied too. `ws: true` is required for the
+      // transport upgrade — without it the handshake succeeds but the
+      // connection silently stays stuck on HTTP long-polling.
+      '/socket.io': {
+        target: 'https://tms-api-m7yf.onrender.com',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
 })

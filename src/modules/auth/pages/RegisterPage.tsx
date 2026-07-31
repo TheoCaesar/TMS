@@ -5,6 +5,7 @@ import { catchError, switchMap } from 'rxjs/operators';
 import { TextField } from '@/components/ui/TextField';
 import { PasswordField } from '@/components/ui/PasswordField';
 import { authApi, usersApi, ApiError } from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 import { ROUTES } from '@/lib/routes';
 
 // Matches the Figma "Create Account" screen (Full Name / Email / Phone /
@@ -13,6 +14,7 @@ import { ROUTES } from '@/lib/routes';
 // with a follow-up PATCH /users/me after a successful register.
 export function RegisterPage() {
   const navigate = useNavigate();
+  const { refresh } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -34,7 +36,12 @@ export function RegisterPage() {
         ),
       )
       .subscribe({
-        next: () => navigate(ROUTES.home),
+        next: () => {
+          // Pull the new profile into the shared auth context so the nav
+          // reflects the session immediately, without a full page reload.
+          refresh();
+          navigate(ROUTES.home);
+        },
         error: (err: unknown) => {
           setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
           setSubmitting(false);

@@ -1,5 +1,5 @@
-import { Observable, of, throwError } from 'rxjs';
-import { catchError, finalize, shareReplay, switchMap } from 'rxjs/operators';
+import { Observable, TimeoutError, of, throwError } from 'rxjs';
+import { catchError, finalize, shareReplay, switchMap, timeout } from 'rxjs/operators';
 import { fromFetch } from 'rxjs/fetch';
 import type { ApiEnvelope, AuthTokens } from './types';
 import { clearTokens, getTokens, setTokens } from './tokenStore';
@@ -30,6 +30,11 @@ interface RequestOptions {
   body?: unknown;
   auth?: boolean; // attach Authorization header (default true)
   query?: Record<string, string | number | boolean | undefined>;
+  // Abort after this many ms, surfaced as ApiError(408). Browser fetch has
+  // no default timeout, so without this a hung request (Render cold start)
+  // spins forever. Only set it where a call is expected to be slow — the AI
+  // planner takes ~66s (see docs/DEVELOPMENT_LOG.md).
+  timeoutMs?: number;
 }
 
 function buildUrl(path: string, query?: RequestOptions['query']): string {
@@ -52,7 +57,7 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
 // integration — a real advantage over a Promise, which can't be cancelled
 // once started.
 function rawRequest$<T>(path: string, options: RequestOptions = {}): Observable<T> {
-  const { method = 'GET', body, auth = true, query } = options;
+  const { method = 'GET', body, auth = true, query, timeoutMs } = options;
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (auth) {
@@ -60,7 +65,8 @@ function rawRequest$<T>(path: string, options: RequestOptions = {}): Observable<
     if (tokens) headers.Authorization = `Bearer ${tokens.accessToken}`;
   }
 
-  return fromFetch(buildUrl(path, query), {
+  const url = buildUrl(path, query);
+  const request$ = fromFetch(url, {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -76,6 +82,62 @@ function rawRequest$<T>(path: string, options: RequestOptions = {}): Observable<
           ),
     ),
   );
+
+  if (timeoutMs !== undefined) {
+    // timeout() unsubscribes on expiry, which aborts the underlying fetch via
+    // fromFetch's AbortController — so this genuinely cancels, it doesn't just
+    // stop listening. Re-thrown as an ApiError so callers keep one error type.
+    // Not pooled: a request that opted into a timeout keeps its cancellation.
+    return request$.pipe(
+      timeout(timeoutMs),
+      catchError((err: unknown) =>
+        throwError(() =>
+          err instanceof TimeoutError ? new ApiError(408, 'Request timed out') : err,
+        ),
+      ),
+    );
+  }
+
+  // Only GETs are safe to pool — sharing a POST/PATCH/DELETE would silently
+  // collapse two distinct intents into one. The Authorization header is part
+  // of the key so a token change (or logging out) can't serve a stale
+  // identity's in-flight response.
+  if (method !== 'GET') return request$;
+  return shareInFlight$(`${url}|${headers.Authorization ?? ''}`, request$);
+}
+
+// De-duplicates concurrent identical GETs — the same shareReplay(1) trick
+// used for token refresh below, generalised. Two components mounting at
+// once and asking for the same URL share one HTTP request instead of
+// racing two (e.g. TopNav and a page both wanting /users/me).
+//
+// This also absorbs React StrictMode's dev-only mount/unmount/remount:
+// without it, the remount aborted the first request and started a second,
+// which showed up in devtools as a cancelled request followed by a real
+// one. That was harmless and dev-only, but noisy and easy to misread as a
+// failure-and-retry.
+//
+// Deliberate trade-off: shareReplay keeps the source subscribed, so a GET
+// no longer aborts at the network level when its last subscriber leaves.
+// The protection that actually matters is unaffected — useApiResource
+// still unsubscribes, so a slow stale response can never write state. Only
+// GETs are pooled; mutations must never be shared, and requests that opt
+// into a timeout keep their own cancellation.
+const inFlightGets = new Map<string, Observable<unknown>>();
+
+function shareInFlight$<T>(key: string, source: Observable<T>): Observable<T> {
+  const existing = inFlightGets.get(key) as Observable<T> | undefined;
+  if (existing) return existing;
+
+  const shared = source.pipe(
+    // Evict as soon as the response settles, so this pools concurrent
+    // callers only — it is not a response cache. The next caller after
+    // completion gets a genuinely fresh request.
+    finalize(() => inFlightGets.delete(key)),
+    shareReplay(1),
+  );
+  inFlightGets.set(key, shared);
+  return shared;
 }
 
 // Coordinates concurrent 401s into a single in-flight refresh call —

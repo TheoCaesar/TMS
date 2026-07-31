@@ -7,4 +7,7 @@ export * as toursApi from './tours';
 export * as bookingsApi from './bookings';
 export * as paymentsApi from './payments';
 export * as reviewsApi from './reviews';
+export * as itinerariesApi from './itineraries';
+export * as socketApi from './socket';
+export type { BookingStatusEvent, AvailabilityEvent } from './socket';
 export { getTokens, clearTokens } from './tokenStore';
