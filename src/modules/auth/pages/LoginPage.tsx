@@ -4,6 +4,7 @@ import { TextField } from '@/components/ui/TextField';
 import { PasswordField } from '@/components/ui/PasswordField';
 import { authApi, ApiError } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
+import { AuthLayout } from '@/modules/auth/components/AuthLayout';
 import { ROUTES } from '@/lib/routes';
 
 // No Figma screen captured for Login — styled consistently with Register
@@ -35,8 +36,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="px-5 pt-6 pb-10 md:mx-auto md:max-w-md md:pt-16">
-      <h1 className="mb-6 text-2xl font-bold text-ink-900 dark:text-white">Log In</h1>
+    <AuthLayout title="Welcome back" subtitle="Log in to pick up where you left off.">
 
       <form onSubmit={handleSubmit}>
         <TextField
@@ -81,6 +81,6 @@ export function LoginPage() {
           Sign up
         </Link>
       </p>
-    </div>
+    </AuthLayout>
   );
 }

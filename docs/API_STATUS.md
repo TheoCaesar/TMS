@@ -3,12 +3,144 @@
 Every endpoint in the live spec (`GET /api/docs-json`), tested against the
 running backend and cross-referenced with what the frontend actually calls.
 
-**Audited:** 2026-07-31 · **Base:** `https://tms-api-m7yf.onrender.com/api/v1`
-· **36 endpoints** in the spec — unchanged since the previous audit (nothing
-added or removed).
+**Audited:** 2026-07-31 (second pass) · **Base:**
+`https://tms-api-m7yf.onrender.com/api/v1` · **50 endpoints** — up from 36.
+
+## What changed since the last audit
+
+The backend shipped a large update, including several things this repo had
+specced in `API_REQUIREMENTS.md`:
+
+1. **`GET /bookings/me` is fixed** — 200, and it now returns the
+   **polymorphic booking** shape with an embedded `item` summary
+   (`id`, `slug`, `title`, `imageUrl`, `startsAt`) plus `itemType`. `/trips`
+   no longer fans out across every tour's departures to resolve a title.
+   The `status=upcoming|completed|cancelled` filters work.
+2. **Emergency module is live** (6 endpoints): facilities with `distanceKm`,
+   national contacts, and SOS with the **client-generated idempotent
+   `alertId`** that was specced. Facilities and contacts are **public** —
+   correct, since this page must work with an expired session.
+3. **Restaurants/Food module is live** (5 endpoints) plus `/reservations`.
+   Not yet wired to the UI.
+
+### ⚠️ Breaking change: money is now MAJOR units
+
+Every money field dropped its `Minor` suffix and switched from pesewas to
+whole GHS:
+
+| Was | Now |
+| --- | --- |
+| `priceMinor: 8000` | `price: 80` |
+| `totalMinor: 8000` | `total: 80` |
+| `amountMinor: 8000` | `amount: 80` |
+| `budgetMinor` / `estimatedTotalMinor` / `estimatedCostMinor` | `budget` / `estimatedTotal` / `estimatedCost` |
+
+This contradicts the integration guide, which still documents integer minor
+units. The frontend normalises **at the edge** in `src/lib/api/money.ts`
+(`toMinorUnits` / `toOptionalMinorUnits`), applied in `tours.ts`,
+`bookings.ts`, `itineraries.ts` and `payments.ts`, so the rest of the app
+keeps one unit. Delete those fallbacks if the API ever matches its spec.
+
+**Worth telling the backend team:** either the guide or the API is wrong —
+they should agree. Silent unit changes are the kind of thing that turns into
+a 100× billing error.
+
+### Seed-data issue (cosmetic, but visible)
+
+The seeded destination photos don't depict the places they label — the
+`heroImageUrl` for **Accra** is a photo of Table Mountain, Cape Town. It
+shows on Home's Featured Destinations and anywhere else that image is used.
 
 Legend — **Wired**: called by the app · **UI**: has a screen using it ·
 **Live**: result of hitting it just now.
+
+---
+
+## Inventory — 50 endpoints, where each one stands
+
+**40 of 50 are wired into `src/lib/api/`. 10 are not.** Every endpoint below
+was hit live during this audit.
+
+### A. Wired and working end-to-end (40)
+
+Auth (6) · Users + loyalty (3) · Destinations CRUD (5) · Tours incl. operator
+/admin lifecycle (10) · Departures (2) · Reviews (2) · Bookings (5) ·
+Payments (2) · Itineraries (4) · Uploads (1) · Emergency facilities/contacts
+/SOS trigger + cancel (4) · plus both Socket.IO namespaces.
+
+### B. NOW WIRED (was "backend ready, frontend not wired")
+
+As of this session the Food module, emergency contacts and Explore's
+server-side search are all connected:
+
+- `GET /restaurants` — drives `/food` with **server-side** filtering
+  (`q`, `cuisine`, `priceTier`, `dietary`, `openNow`); the debounced search
+  box queries the API rather than filtering one page in memory.
+- `GET /restaurants/:slug` + `/menu` — real detail and menu with prices.
+- `GET /restaurants/:id/availability` + `POST /reserve` — a working table
+  booking flow; slots come from the server so the UI can never offer a time
+  the API would reject. Verified end-to-end: reserve → `TBL-2026-0002`
+  CONFIRMED → `GET /reservations/:ref` → cancel.
+- `GET`/`PUT /users/me/emergency-contacts` — new `/profile/emergency-contacts`
+  screen; the Profile row is no longer dead.
+- `GET /tours?q=` — Explore now searches the whole catalogue server-side.
+
+`src/modules/food/data.ts` was deleted — the screens read the API now.
+
+**Still unwired (3):** `GET /emergency/sos/:alertId` (no SOS-tracking screen
+exists yet), and the two `/reservations/:ref` endpoints have client functions
+(`getReservation$`, `cancelReservation$`) but no screen — reservations don't
+appear in `/trips` because `GET /bookings/me` returns tour bookings only.
+
+### C. Original gap list — pure UI work
+
+| Endpoint | Verified live | Blocks |
+| --- | --- | --- |
+| `GET /restaurants` | ✅ 4 seeded restaurants, filters `q, cuisine, priceTier, dietary, lat, lng, openNow` | `/food` still reads `data.ts` |
+| `GET /restaurants/:slug` | ✅ full detail incl. `dietary`, `ratingAvg`, `openingHours` | `/food/:slug` |
+| `GET /restaurants/:id/menu` | ✅ sections → items with `price` | Menu tab |
+| `GET /restaurants/:id/availability?date=&partySize=` | ✅ returns bookable `slots[]` | "Reserve a Table" |
+| `POST /restaurants/:id/reserve` | auth | Reserve action |
+| `GET /reservations/:reference` | auth | Reservation detail |
+| `POST /reservations/:reference/cancel` | auth | Cancel a reservation |
+| `GET /emergency/sos/:alertId` | auth | Track a raised SOS |
+| `GET /users/me/emergency-contacts` | ✅ 200 (empty) | Profile → "Emergency Contacts" row |
+| `PUT /users/me/emergency-contacts` | auth | Editing those contacts |
+
+**The Food module is the big one**: the entire vertical is live on the
+backend and the screens already exist — they just read `src/modules/food/data.ts`
+instead of the API.
+
+### C. Gaps I previously reported that the backend has now CLOSED
+
+- ✅ `GET /bookings/me` fixed, and bookings are polymorphic with an embedded
+  `item` summary → the O(tours) fan-out is gone from `/trips`.
+- ✅ `GET /tours?q=` text search now exists. **The frontend still filters
+  client-side** — Explore should switch to server-side search.
+- ✅ `GET /bookings/me?type=` for per-vertical tabs.
+- ✅ Emergency module, including the idempotent `alertId`.
+
+### D. Still static — no endpoint exists at all
+
+| Screen | What's missing |
+| --- | --- |
+| `/flights`, `/flights/results` | the whole flights vertical — airports, search, offers, booking |
+| `/hotels`, `/hotels/:slug` | the whole stays vertical — search, rooms, availability, rates, reservation |
+| `/transport`, `/transport/active-ride` | fare quote, driver dispatch, live tracking, ride socket |
+| Explore category pills (Attractions/Restaurants/Hotels) | `Tour` has **no `category` field** — the pills cannot work |
+| Explore "Map View" | destinations carry `lat`/`lng`, but there's no bounds/near query; a map could plot the existing 5 |
+| Profile → Travel Preferences, Payment Methods, Saved Places, Notifications, Help & Support | no endpoints (favourites + notifications were specced in `API_REQUIREMENTS.md`) |
+| Tourist avatar upload | `POST /uploads/image` is still OPERATOR/ADMIN-only |
+| Itinerary across verticals | planner is still grounded in `APPROVED` tours only |
+
+### Recommended order
+
+1. **Wire the Food module** (5 endpoints, screens already built) — biggest
+   win per unit of work, and it makes `itemType: 'TABLE'` bookings real.
+2. **Wire `/users/me/emergency-contacts`** — one dead Profile row, two endpoints.
+3. **Switch Explore to `?q=`** — server-side search already exists.
+4. Ask the backend for a `category` on `Tour` so Explore's pills work.
+5. Flights / Hotels / Transport remain genuine backend projects.
 
 ---
 

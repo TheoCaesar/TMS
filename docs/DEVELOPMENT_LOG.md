@@ -808,3 +808,127 @@ Desktop `TopNav` is unaffected — it already had its own persistent
 `/bookings/:reference` (the real `BookingDetailPage`) is untouched — only
 the bare `/bookings` list route is gone.
 Wait on real content instead.
+
+---
+
+## Session 7 — 2026-07-31: Guide-2 audit, operator/admin consoles, real maps
+
+Three asks: implement whatever `docs/frontend-integration-guide-2.md`
+specifies that isn't built yet, add map integration per the SRS, and remove
+`/bookings` as redundant with `/trips`.
+
+### "Guide 2" is byte-identical to guide 1
+
+First thing checked, and it changes the whole shape of the task: `diff
+docs/frontend-integration-guide.md docs/frontend-integration-guide-2.md`
+produces **no output**. There are no new endpoints in guide 2. So "implement
+what isn't implemented" meant auditing the original guide against
+`src/lib/api/` — which had never been done exhaustively.
+
+Result of that audit: every tourist-facing endpoint was already wired
+(including reviews — HANDOFF's "Reviews are dead code" note was stale, both
+`TourReviews.tsx` and `WriteReview.tsx` consume them). **The only endpoints
+with no client function at all were operator/admin-scoped**: `POST
+/uploads/image`, tour create/update/submit/approve/suspend, create departure,
+and destinations CRUD. Ten endpoints, one shared theme.
+
+Three implemented-but-wrong-vs-spec items came out of the same pass:
+`listMyBookings$` typed its filter as `BookingStatus` when the API only
+accepts `upcoming|completed|cancelled` (a latent 400 — nothing passed it
+yet); `verifyPayment$` returned `unknown`; `DepartureStatus` carried a
+`CLOSED` member the spec doesn't list.
+
+### The operator console is shaped by a backend gap, not by design
+
+`GET /tours` and `GET /tours/:slug` are `APPROVED`-only, and there's no
+`GET /tours/mine`. A created tour is a `DRAFT`, therefore **unreadable the
+moment its create response is discarded** — no edit, no departures, no
+submit-for-review. There's also no endpoint listing `PENDING_REVIEW` tours,
+so there is no approval queue to render.
+
+The honest options were: fabricate a listing (forbidden), or work with what
+the API really returns. `/operator` keeps the API's own create/update
+responses in `localStorage` (`src/lib/operatorTourStore.ts`) and labels that
+section as device-local; `/admin` takes a pasted tour id and says why. Both
+are written up in `API_REQUIREMENTS.md` §7b as backend asks.
+
+`RoleGate` is deliberately **not** a redirect. A redirect races the
+`GET /users/me` fetch and would bounce a legitimate operator to the home page
+on every hard refresh; it also breaks the shell-first rule. It renders inline
+in the page's own frame instead.
+
+**Not verified against the live backend:** there are no OPERATOR or ADMIN
+credentials, so every write path in these two consoles is type-checked and
+lint-clean but unconfirmed end-to-end.
+
+### Maps: three failures that only a real browser would have shown
+
+Only `Destination.lat/lng` carries real coordinates (confirmed live: Accra
+`5.6037/-0.187`, Cape Coast, Elmina, Kumasi, Mole). Hotels, Food, Emergency
+and Transport have no coordinates anywhere, so per the no-fabrication rule
+they keep their inert placeholders. Built: the Explore viewport map, the Tour
+Detail location map, Directions, and opt-in "Near me".
+
+Everything type-checked and built clean while being **completely broken** in
+three separate ways. Each was only caught by driving a real browser:
+
+1. **The tile source.** MapLibre's own `demotiles.maplibre.org` — the default
+   in nearly every example — is country-outlines-only and paints as a blank
+   green shape at city zoom. Switched to OpenFreeMap Liberty (keyless,
+   unmetered, real street detail).
+
+2. **MapLibre's Web Worker dies under Vite's dep pre-bundling.**
+   `net::ERR_FAILED` on `/node_modules/.vite/deps/maplibre-gl-worker.mjs`.
+   This is the nastiest one because it fails *convincingly*: the style,
+   sprites and raster relief tiles all load over HTTP on the main thread with
+   200s, the canvas exists, the attribution renders — but vector tiles are
+   fetched **inside the worker**, so `.pbf` requests were exactly zero and the
+   map painted as an empty background with markers floating on it. Fixed with
+   `optimizeDeps.exclude: ['maplibre-gl']` in `vite.config.ts`; 0 → 13 vector
+   tiles. Dev-only; the production build emits the worker as a normal asset.
+
+3. **`load` is the wrong readiness event.** It waits for every
+   initially-visible tile, so the stalled source above left it pending
+   forever — which pinned the loading skeleton over a working map *and* dead-
+   locked the camera effect, which waits on the same flag. `styledata` (style
+   parsed, map painting) is the correct signal; `load` is kept as a second
+   trigger. Related: `map.on('error')` no longer blanks the map after first
+   paint, so one 404'd tile can't replace a working map with "Map
+   unavailable".
+
+Also: the first `fitBounds` was hand-rolled zoom maths that ignored the
+container's aspect ratio, so pins spilled out of the short, wide map frame.
+Delegated to MapLibre's own `fitBounds`, which knows the real aspect ratio.
+
+MapLibre is ~950 kB, so `MapView` is `React.lazy`'d — entry bundle went
+463 → 468 kB, with the library in its own chunk fetched only by the two
+screens that use it. Its CSS is imported inside the component, not
+`main.tsx`, so it splits into the same lazy chunk.
+
+### "GHSNaN" — found by looking at the screen
+
+While screenshotting the Tour Detail map, the price bar read **`GHSNaN`**.
+The guide specifies integer minor units; the live API sends major units under
+different names — `price: 80` not `priceMinor: 8000`, `total: 80` not
+`totalMinor: 8000`. So the documented field read back `undefined` on Tour
+Detail, My Trips and Booking Detail.
+
+Pre-existing, not from this branch, but it's the price on a core screen.
+Normalised at the API boundary (`src/lib/api/money.ts`) rather than per call
+site, accepting either shape — so the backend can fix its side whenever
+without a coordinated release. Verified: no NaN, real GHS amounts.
+
+Two incidental findings: **`GET /bookings/me` no longer 500s** (it returned
+real paginated data), and bookings embed an undocumented `item` object
+carrying the tour title — which is exactly what `TripsPage` currently
+reconstructs by cross-referencing every tour's departures. Typed and noted;
+that simplification is left as a separate change.
+
+### `/bookings` vs `/trips`
+
+Resolved the standing open question. `/trips` is the real screen (headed "My
+Bookings", `GET /bookings/me`, three tabs, view/cancel); `/bookings` was a
+`PlaceholderPage` stub. Deleted it and `PlaceholderPage` with it, dropped the
+nav tab (5 → 4) and the footer link, and pointed `/bookings` at a `Navigate`
+to `/trips` so old links don't 404. `/bookings/:reference` is a different
+screen and is untouched — a parent-path `Navigate` doesn't shadow it.

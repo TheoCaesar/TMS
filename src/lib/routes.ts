@@ -12,10 +12,18 @@ export const ROUTES = {
   transportActiveRide: '/transport/active-ride',
   emergency: '/emergency',
   trips: '/trips',
+  // The bookings *list* lives at /trips -- `bookings` is kept because the
+  // booking detail screen is /bookings/:reference, and /bookings itself
+  // redirects to /trips (see App.tsx).
   bookings: '/bookings',
   itineraries: '/itineraries',
   profile: '/profile',
   profilePersonalInfo: '/profile/personal-info',
+  profileEmergencyContacts: '/profile/emergency-contacts',
+  // Role-gated consoles (RoleGate); hidden from the nav for other roles.
+  operator: '/operator',
+  admin: '/admin',
+  adminDestinations: '/admin/destinations',
   auth: {
     login: '/login',
     forgotPassword: '/forgot-password',

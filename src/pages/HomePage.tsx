@@ -17,9 +17,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
 import { Skeleton, SkeletonLine } from '@/components/ui/Skeleton';
 
-// Emergency dropped from here — it now lives in the bottom nav's raised
-// SOS button (and TopNav's persistent Emergency link on desktop) instead
-// of sharing this grid, so it's reachable without scrolling past it.
+// Six tiles, so the grid divides evenly at every breakpoint (3x2 on mobile,
+// 6 across on desktop). Emergency dropped from here — it now lives in the
+// bottom nav's raised SOS button (and TopNav's persistent Emergency link on
+// desktop) instead of sharing this grid.
 const quickAccess = [
   { to: ROUTES.explore, label: 'Explore', icon: Compass },
   { to: ROUTES.itineraries, label: 'Plan Trip', icon: Sparkles },
@@ -102,7 +103,7 @@ export function HomePage() {
         <h2 className="mb-3 text-lg font-bold text-ink-900 dark:text-white md:mb-6 md:text-center md:text-2xl">
           Quick Access
         </h2>
-        <div className="grid grid-cols-3 gap-3 md:grid-cols-4 md:gap-4 lg:grid-cols-6">
+        <div className="grid grid-cols-3 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-6">
           {quickAccess.map(({ to, label, icon: Icon }) => (
             <Link
               key={to}

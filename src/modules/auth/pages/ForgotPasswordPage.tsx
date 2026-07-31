@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { TextField } from '@/components/ui/TextField';
 import { ApiError, authApi } from '@/lib/api';
+import { AuthLayout } from '@/modules/auth/components/AuthLayout';
 import { ROUTES } from '@/lib/routes';
 
 // Step 1 of password recovery: POST /auth/forgot-password emails a reset
@@ -32,18 +33,21 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <div className="px-5 pt-6 pb-10 md:mx-auto md:max-w-md md:pt-16">
-      <Link
-        to={ROUTES.auth.login}
-        className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-neutral-500 dark:text-neutral-400"
-      >
-        <ChevronLeft className="size-4" /> Back to log in
-      </Link>
-
-      <h1 className="text-2xl font-bold text-ink-900 dark:text-white">Forgot password?</h1>
+    <AuthLayout
+      title="Forgot password?"
+      subtitle="Enter the email on your account and we'll send you a link to set a new password."
+      footer={
+        <Link
+          to={ROUTES.auth.login}
+          className="inline-flex items-center gap-1 text-sm font-medium text-neutral-500 dark:text-neutral-400"
+        >
+          <ChevronLeft className="size-4" /> Back to log in
+        </Link>
+      }
+    >
 
       {sent ? (
-        <div className="mt-5 rounded-card border border-brand-500/30 bg-brand-50 p-4 dark:bg-brand-700/15">
+        <div className="rounded-card border border-brand-500/30 bg-brand-50 p-4 dark:bg-brand-700/15">
           <MailCheck className="size-8 text-brand-600 dark:text-brand-500" />
           <p className="mt-3 font-semibold text-ink-900 dark:text-white">Check your inbox</p>
           <p className="mt-1 text-sm leading-relaxed text-neutral-600 dark:text-neutral-300">
@@ -60,9 +64,6 @@ export function ForgotPasswordPage() {
         </div>
       ) : (
         <>
-          <p className="mb-5 mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-            Enter the email on your account and we'll send you a link to set a new password.
-          </p>
           <form onSubmit={handleSubmit}>
             <TextField
               label="Email"
@@ -85,6 +86,6 @@ export function ForgotPasswordPage() {
           </form>
         </>
       )}
-    </div>
+    </AuthLayout>
   );
 }

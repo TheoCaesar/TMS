@@ -1,32 +1,67 @@
 import type { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { apiRequest$ } from './client';
-import type { ApiPage, GenerateItineraryInput, Itinerary } from './types';
+import { toOptionalMinorUnits } from './money';
+import type { ApiPage, GenerateItineraryInput, Itinerary, ItineraryItem } from './types';
 
-// AI itinerary planner. Plans are grounded in the real APPROVED tours in
-// the system: items with `bookable: true` carry a genuine tourId/tourSlug
-// that deep-links into the existing booking flow (see ItineraryDetailPage).
-// All four endpoints require auth.
+// Same money mismatch as tours and bookings (see money.ts): the live API
+// sends major units under shorter names -- `budget`, `estimatedTotal`,
+// `estimatedCost` -- while this app works in the guide's minor units. Left
+// unnormalised, every price on the itinerary screens silently vanished
+// (the `*Minor` reads came back undefined, so the UI just omitted them).
+type RawItem = Omit<ItineraryItem, 'estimatedCostMinor'> & {
+  estimatedCostMinor?: number;
+  estimatedCost?: number;
+};
 
-// Synchronous and slow by design — no streaming, no socket channel. The
-// request holds open until the whole plan is ready; measured at ~66s against
-// the live free-tier model. Hence the 2-minute ceiling (the guide recommends
-// at least ~90s) and the dedicated long-wait UI on ItinerariesPage.
-// Errors worth handling: 502 (model failed), 503 (no AI key on the server).
+interface RawItinerary extends Omit<Itinerary, 'budgetMinor' | 'plan'> {
+  budgetMinor?: number;
+  budget?: number;
+  plan: Omit<Itinerary['plan'], 'estimatedTotalMinor' | 'days'> & {
+    estimatedTotalMinor?: number;
+    estimatedTotal?: number;
+    days: { day: number; title: string; items: RawItem[] }[];
+  };
+}
+
+function normaliseItinerary(raw: RawItinerary): Itinerary {
+  return {
+    ...raw,
+    budgetMinor: toOptionalMinorUnits(raw.budgetMinor, raw.budget),
+    plan: {
+      ...raw.plan,
+      estimatedTotalMinor: toOptionalMinorUnits(
+        raw.plan.estimatedTotalMinor,
+        raw.plan.estimatedTotal,
+      ),
+      days: raw.plan.days.map((day) => ({
+        ...day,
+        items: day.items.map((item) => ({
+          ...item,
+          estimatedCostMinor: toOptionalMinorUnits(item.estimatedCostMinor, item.estimatedCost),
+        })),
+      })),
+    },
+  };
+}
+
 export function generateItinerary$(input: GenerateItineraryInput): Observable<Itinerary> {
-  return apiRequest$<Itinerary>('/itineraries/generate', {
+  return apiRequest$<RawItinerary>('/itineraries/generate', {
     method: 'POST',
     body: input,
     timeoutMs: 120_000,
-  });
+  }).pipe(map(normaliseItinerary));
 }
 
 export function listItineraries$(page = 1, limit = 20): Observable<ApiPage<Itinerary>> {
-  return apiRequest$<ApiPage<Itinerary>>('/itineraries', { query: { page, limit } });
+  return apiRequest$<ApiPage<RawItinerary>>('/itineraries', { query: { page, limit } }).pipe(
+    map((page) => ({ ...page, results: page.results.map(normaliseItinerary) })),
+  );
 }
 
 // Returns 404 (not 403) for an itinerary belonging to someone else.
 export function getItinerary$(id: string): Observable<Itinerary> {
-  return apiRequest$<Itinerary>(`/itineraries/${id}`);
+  return apiRequest$<RawItinerary>(`/itineraries/${id}`).pipe(map(normaliseItinerary));
 }
 
 export function deleteItinerary$(id: string): Observable<null> {

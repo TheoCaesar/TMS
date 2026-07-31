@@ -24,10 +24,10 @@ import { PersonalInfoPage } from '@/pages/PersonalInfoPage';
 // is designed from the real data fields (GET /users/me + /users/me/loyalty)
 // consistent with the rest of the app. Most menu rows have no backend at
 // all (Travel Preferences, Payment Methods, Saved Places, Notifications,
-// Emergency Contacts, Help & Support) — left non-interactive per the
-// user's call, matching Figma visually without dead-end fake navigation.
-// Personal Info is the one row with real backend support (PATCH
-// /users/me), so it links to a real edit page.
+// Help & Support) — left non-interactive per the user's call, matching Figma
+// visually without dead-end fake navigation. The two rows that DO have
+// backend support link to real pages: Personal Info (PATCH /users/me) and
+// Emergency Contacts (GET/PUT /users/me/emergency-contacts).
 interface MenuRow {
   label: string;
   icon: ComponentType<{ className?: string }>;
@@ -41,7 +41,7 @@ const menuRows: MenuRow[] = [
   { label: 'Payment Methods', icon: CreditCard },
   { label: 'Saved Places', icon: MapPin },
   { label: 'Notifications', icon: Bell },
-  { label: 'Emergency Contacts', icon: Users, danger: true },
+  { label: 'Emergency Contacts', icon: Users, to: ROUTES.profileEmergencyContacts, danger: true },
   { label: 'Help & Support', icon: HelpCircle },
 ];
 

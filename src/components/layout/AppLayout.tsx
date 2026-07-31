@@ -32,7 +32,9 @@ export function AppLayout() {
   return (
     <div className="relative mx-auto flex min-h-screen max-w-md flex-col bg-white dark:bg-neutral-950 md:max-w-none">
       <TopNav />
-      <div className="flex-1 pb-20 md:pb-0">
+      {/* `md:pb-24` is the breathing room between page content and the
+          footer — without it the footer reads as glued to the last section. */}
+      <div className="flex-1 pb-20 md:pb-24">
         <Outlet />
       </div>
       <SiteFooter />

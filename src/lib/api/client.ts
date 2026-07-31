@@ -26,7 +26,9 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  // A FormData body is passed through untouched (multipart image upload);
+  // anything else is JSON-encoded. See rawRequest$.
   body?: unknown;
   auth?: boolean; // attach Authorization header (default true)
   query?: Record<string, string | number | boolean | undefined>;
@@ -58,8 +60,12 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
 // once started.
 function rawRequest$<T>(path: string, options: RequestOptions = {}): Observable<T> {
   const { method = 'GET', body, auth = true, query, timeoutMs } = options;
+  // FormData must NOT get an explicit Content-Type -- the browser has to set
+  // it itself so it can append the multipart boundary. Setting it by hand
+  // produces a body the server can't parse.
+  const isMultipart = body instanceof FormData;
   const headers: Record<string, string> = {};
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (body !== undefined && !isMultipart) headers['Content-Type'] = 'application/json';
   if (auth) {
     const tokens = getTokens();
     if (tokens) headers.Authorization = `Bearer ${tokens.accessToken}`;
@@ -69,7 +75,7 @@ function rawRequest$<T>(path: string, options: RequestOptions = {}): Observable<
   const request$ = fromFetch(url, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: isMultipart ? body : body !== undefined ? JSON.stringify(body) : undefined,
   }).pipe(
     switchMap((response) =>
       (response.json() as Promise<ApiEnvelope<T>>).then((envelope) => ({ response, envelope })),

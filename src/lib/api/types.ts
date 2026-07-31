@@ -71,7 +71,11 @@ export interface Tour {
   ratingCount: number;
 }
 
-export type DepartureStatus = 'SCHEDULED' | 'CLOSED' | 'CANCELLED';
+// The integration guide's enum table lists only these two. An earlier
+// 'CLOSED' member was carried over from a draft of the OpenAPI spec and
+// never appeared in a real response — removed rather than left to invite
+// dead branches.
+export type DepartureStatus = 'SCHEDULED' | 'CANCELLED';
 
 export interface Departure {
   id: string;
@@ -84,6 +88,11 @@ export interface Departure {
 
 export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
 
+// The ?status= filter on GET /bookings/me is NOT the BookingStatus enum --
+// it takes these three UI-tab names and maps them server-side (upcoming
+// covers PENDING + CONFIRMED). Passing 'PENDING' returns a 400.
+export type BookingListFilter = 'upcoming' | 'completed' | 'cancelled';
+
 export interface Booking {
   reference: string;
   departureId: string;
@@ -92,6 +101,32 @@ export interface Booking {
   currency: string;
   status: BookingStatus;
   createdAt: string;
+  // Undocumented in the integration guide but really returned: a summary of
+  // what was booked. Worth knowing about -- it carries the tour title that
+  // TripsPage currently reconstructs by cross-referencing every tour's
+  // departures.
+  item?: {
+    id: string;
+    slug: string;
+    title: string;
+    imageUrl?: string;
+    startsAt: string;
+  };
+}
+
+export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+
+export interface Payment {
+  providerRef: string;
+  status: PaymentStatus;
+  amountMinor: number;
+  currency: string;
+  authorizationUrl?: string;
+}
+
+export interface UploadResult {
+  url: string;
+  publicId: string;
 }
 
 export interface Review {
@@ -177,11 +212,46 @@ export interface UpdateProfileInput {
 export interface ToursQuery {
   page?: number;
   limit?: number;
+  q?: string; // server-side text search
   destinationId?: string;
   minPrice?: number;
   maxPrice?: number;
   sort?: string;
 }
+
+// --- Operator/admin write payloads ---
+// The API whitelists DTO fields, so an unknown extra key is a 400 -- keep
+// these exactly in step with the integration guide's tables.
+
+export interface CreateTourInput {
+  title: string;
+  destinationId: string;
+  description: string;
+  priceMinor: number;
+  durationMinutes: number;
+  heroImageUrl?: string;
+}
+
+// destinationId is deliberately absent: PATCH /tours/:id accepts a partial
+// of the create body *except* destinationId, which is fixed at creation.
+export type UpdateTourInput = Partial<Omit<CreateTourInput, 'destinationId'>>;
+
+export interface CreateDepartureInput {
+  departsAt: string; // ISO 8601
+  capacity: number; // >= 1
+}
+
+export interface CreateDestinationInput {
+  name: string;
+  region: string;
+  country?: string;
+  description: string;
+  heroImageUrl?: string;
+  lat?: number;
+  lng?: number;
+}
+
+export type UpdateDestinationInput = Partial<CreateDestinationInput>;
 
 export interface CreateBookingInput {
   departureId: string;

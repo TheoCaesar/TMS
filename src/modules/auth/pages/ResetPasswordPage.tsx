@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { PasswordField } from '@/components/ui/PasswordField';
 import { ApiError, authApi } from '@/lib/api';
+import { AuthLayout } from '@/modules/auth/components/AuthLayout';
 import { ROUTES } from '@/lib/routes';
 
 // Step 2 of password recovery. The token arrives in the emailed link as
@@ -53,13 +54,10 @@ export function ResetPasswordPage() {
   // Reached by opening /reset-password directly, or by a mangled email link.
   if (!token) {
     return (
-      <div className="px-5 pt-6 pb-10 md:mx-auto md:max-w-md md:pt-16">
+      <AuthLayout title="This link isn't valid">
         <div className="rounded-card border border-neutral-100 p-5 text-center dark:border-neutral-800">
           <TriangleAlert className="mx-auto size-10 text-accent-500" />
-          <h1 className="mt-3 text-xl font-bold text-ink-900 dark:text-white">
-            This link isn't valid
-          </h1>
-          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="mt-3 text-sm text-neutral-500 dark:text-neutral-400">
             Open the reset link from your email, or request a new one.
           </p>
           <Link
@@ -69,16 +67,15 @@ export function ResetPasswordPage() {
             Request a new link
           </Link>
         </div>
-      </div>
+      </AuthLayout>
     );
   }
 
   if (done) {
     return (
-      <div className="px-5 pt-6 pb-10 md:mx-auto md:max-w-md md:pt-16">
+      <AuthLayout title="Password updated">
         <div className="rounded-card border border-brand-500/30 bg-brand-50 p-5 text-center dark:bg-brand-700/15">
           <CheckCircle2 className="mx-auto size-10 text-brand-600" />
-          <h1 className="mt-3 text-xl font-bold text-ink-900 dark:text-white">Password updated</h1>
           <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
             You can now log in with your new password.
           </p>
@@ -90,16 +87,15 @@ export function ResetPasswordPage() {
             Log in
           </button>
         </div>
-      </div>
+      </AuthLayout>
     );
   }
 
   return (
-    <div className="px-5 pt-6 pb-10 md:mx-auto md:max-w-md md:pt-16">
-      <h1 className="text-2xl font-bold text-ink-900 dark:text-white">Set a new password</h1>
-      <p className="mb-5 mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-        Choose a password of at least {MIN_PASSWORD} characters.
-      </p>
+    <AuthLayout
+      title="Set a new password"
+      subtitle={`Choose a password of at least ${MIN_PASSWORD} characters.`}
+    >
 
       <form onSubmit={handleSubmit}>
         <PasswordField
@@ -138,6 +134,6 @@ export function ResetPasswordPage() {
           Request one
         </Link>
       </p>
-    </div>
+    </AuthLayout>
   );
 }
