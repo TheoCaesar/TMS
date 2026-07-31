@@ -7,6 +7,7 @@ import { destinationsApi, toursApi, type Destination, type Tour } from '@/lib/ap
 import { useApiResource } from '@/hooks/useApiResource';
 import { Skeleton, SkeletonLine, SkeletonRegion } from '@/components/ui/Skeleton';
 import { formatDuration } from '@/lib/format';
+import { ROUTES } from '@/lib/routes';
 import { haversineKm, useGeolocation, type LatLng } from '@/lib/geo';
 import type { MapMarker } from '@/components/map/MapView';
 
@@ -21,14 +22,22 @@ const MapView = lazy(() =>
 // coordinates, which shouldn't happen with the current seed data.
 const GHANA_CENTER: LatLng = { lat: 7.95, lng: -1.03 };
 
-// Module M1 — Place of Interest Locator in the Figma design (search,
-// category filters, map, "Nearby Places" list). The live API has no
-// generic POI concept — only bookable Tours — so results are real Tours
-// data reusing Figma's card layout. The Attractions/Restaurants/Hotels
-// filters exist visually to match Figma but have no real data behind
-// them yet (see docs/DEVELOPMENT_LOG.md); only "All" is populated.
+// Module M1 — Place of Interest Locator (search, category filters, map,
+// "Nearby Places"). Results are real Tours: the API still has no generic
+// POI concept, and `Tour` carries no category field.
+//
+// Restaurants and Hotels DO exist now as their own verticals, so those two
+// pills navigate to those modules instead of filtering nothing. Only
+// "Attractions" has no equivalent — a tour category would be needed — so it
+// keeps an honest empty state.
 const categories = ['All', 'Attractions', 'Restaurants', 'Hotels'] as const;
 type Category = (typeof categories)[number];
+
+// Pills that are really a jump to another module.
+const categoryRoutes: Partial<Record<Category, string>> = {
+  Restaurants: ROUTES.food,
+  Hotels: ROUTES.hotels,
+};
 
 export function ExplorePage() {
   const [category, setCategory] = useState<Category>('All');
@@ -141,27 +150,30 @@ export function ExplorePage() {
       </header>
 
       <div className="flex gap-2 overflow-x-auto px-5 pb-4 md:px-8">
-        {categories.map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => setCategory(c)}
-            className={`shrink-0 rounded-full px-5 py-2 text-sm font-semibold transition ${
-              category === c
-                ? 'bg-brand-600 text-white'
-                : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400'
-            }`}
-          >
-            {c}
-          </button>
-        ))}
+        {categories.map((c) => {
+          const pill = `shrink-0 rounded-full px-5 py-2 text-sm font-semibold transition ${
+            category === c
+              ? 'bg-brand-600 text-white'
+              : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400'
+          }`;
+          const route = categoryRoutes[c];
+          return route ? (
+            <Link key={c} to={route} className={pill}>
+              {c}
+            </Link>
+          ) : (
+            <button key={c} type="button" onClick={() => setCategory(c)} className={pill}>
+              {c}
+            </button>
+          );
+        })}
       </div>
 
       {/* SRS FR-POI-04: a map of everything in the current viewport. The
           frame is static and owns its height, so the lazy chunk and the
           tiles both fill in without moving the list below. */}
       <div className="mx-5 mb-3 md:mx-8">
-        <Suspense fallback={<Skeleton className="h-48 w-full md:h-72" />}>
+        <Suspense fallback={<Skeleton className="h-48 w-full rounded-card md:h-96 lg:h-[30rem]" />}>
           <MapView
             center={camera.center}
             zoom={camera.zoom}
@@ -170,7 +182,7 @@ export function ExplorePage() {
             onMarkerSelect={setSelectedDestinationId}
             fitToMarkers={!geo.coords && !selectedDestinationId}
             ariaLabel="Map of destinations"
-            className="h-48 w-full md:h-72"
+            className="h-48 w-full rounded-card md:h-96 lg:h-[30rem]"
           />
         </Suspense>
       </div>
@@ -256,7 +268,8 @@ export function ExplorePage() {
 
         {status === 'ready' && category !== 'All' && (
           <p className="py-6 text-center text-sm text-neutral-400">
-            No {category.toLowerCase()} listed yet — check back soon.
+            Attractions aren't a category the API has yet — tours have no
+            category field. Browse them all under "All".
           </p>
         )}
 

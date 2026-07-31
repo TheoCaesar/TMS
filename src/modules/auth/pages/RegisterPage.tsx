@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { of } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 import { TextField } from '@/components/ui/TextField';
@@ -16,6 +16,10 @@ import { ROUTES } from '@/lib/routes';
 export function RegisterPage() {
   const navigate = useNavigate();
   const { refresh } = useAuth();
+  // RequireAuth parks the intended destination here so login can return the
+  // user to it instead of always dumping them on the home page.
+  const [params] = useSearchParams();
+  const next = params.get('next');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -41,7 +45,7 @@ export function RegisterPage() {
           // Pull the new profile into the shared auth context so the nav
           // reflects the session immediately, without a full page reload.
           refresh();
-          navigate(ROUTES.home);
+          navigate(next || ROUTES.home, { replace: true });
         },
         error: (err: unknown) => {
           setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');

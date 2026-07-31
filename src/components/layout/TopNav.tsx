@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { navTabsFor } from './navTabs';
 import { ROUTES } from '@/lib/routes';
 import { useAuth } from '@/hooks/useAuth';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { getInitials } from '@/lib/format';
 
 // Tablet/desktop only (md+) — mobile uses BottomNav instead. No Figma
@@ -36,6 +37,8 @@ export function TopNav() {
             </NavLink>
           ))}
         </nav>
+
+        <ThemeToggle />
 
         <NavLink
           to={ROUTES.emergency}

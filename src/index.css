@@ -1,6 +1,14 @@
 @import "tailwindcss";
 
 /*
+ * Tailwind v4 defaults `dark:` to prefers-color-scheme, which a manual
+ * switcher can't override. Keying it off a `.dark` class on <html> instead
+ * lets ThemeProvider (src/lib/theme.tsx) drive it, while still defaulting
+ * to the OS preference when the user hasn't chosen.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
  * Design tokens sampled from the Voyago Figma prototype
  * (figma.com/make/DbokKeXxurSiFhZQSQ8aJH). Approximate — refine against
  * live computed styles once the prototype preview is reachable again.
@@ -28,8 +36,13 @@
 
 body {
   margin: 0;
-  color-scheme: light dark;
+  /* color-scheme is set on <html> by ThemeProvider so it tracks the chosen
+     theme rather than the OS. */
   background: var(--color-app-bg);
+}
+
+.dark body {
+  background: #0a0a0a;
 }
 
 /*

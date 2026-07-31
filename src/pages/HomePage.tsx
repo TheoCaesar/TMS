@@ -6,7 +6,6 @@ import {
   MapPin,
   Plane,
   RefreshCw,
-  Search,
   Sparkles,
   Tag,
   Utensils,
@@ -17,6 +16,7 @@ import { ROUTES } from '@/lib/routes';
 import { useAuth } from '@/hooks/useAuth';
 import { useApiResource } from '@/hooks/useApiResource';
 import { Skeleton, SkeletonLine } from '@/components/ui/Skeleton';
+import { PlaceSearch } from '@/components/search/PlaceSearch';
 
 // Six tiles on mobile (3x2), seven on desktop.
 //
@@ -105,11 +105,10 @@ export function HomePage() {
         </p>
       </header>
 
+      {/* Real search across destinations, tours, stays and restaurants —
+          the same places the Explore map plots. */}
       <div className="px-5 md:px-0">
-        <div className="flex items-center gap-2 rounded-2xl bg-neutral-100 px-4 py-3 text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400 md:mx-auto md:max-w-2xl md:rounded-full md:px-6 md:py-4 md:shadow-sm">
-          <Search className="size-5" />
-          <span className="text-sm md:text-base">Where do you want to go?</span>
-        </div>
+        <PlaceSearch className="md:mx-auto md:max-w-2xl" />
       </div>
 
       <section className="px-5 pt-6 md:px-0 md:pt-16">

@@ -255,6 +255,20 @@ endpoint exists to clean them up):
   `fixed` above the tab bar on mobile, and **`md:sticky`** on desktop so they
   settle at the end of the content column instead of floating over the site
   footer. Follow that pattern for any new sticky bar.
+- **Auth guard** (`src/components/layout/RequireAuth.tsx`). Everything
+  inside `AppLayout` requires a login **except `/emergency`**, which is
+  deliberately public: it must work with an expired session (SRS
+  FR-EMRG-08) and its endpoints are public server-side for that reason.
+  **The guard waits for auth to resolve before redirecting** — checking
+  `!user` alone bounces a valid session to /login on every hard refresh,
+  because `GET /users/me` is still in flight. It parks the intended path in
+  `?next=` and login/register return there.
+- **Theme** (`src/lib/theme.tsx` + `src/hooks/useTheme.ts`). Tailwind v4's
+  `dark:` is re-pointed at a `.dark` class on `<html>` via
+  `@custom-variant` in `index.css` — the default (prefers-color-scheme)
+  can't be overridden by a switcher. Three states: light / dark / system
+  (default, keeps following the OS). Icon toggle in `TopNav`; mobile has no
+  top bar, so the three-way picker lives in Profile → Appearance.
 - **Desktop vs mobile shell.** `AppLayout` is two layouts in one: below
   `md` a phone-width column with the bottom tab bar; at `md+` a **full-width
   web page** — pages own their own `max-w-7xl` container and `SiteFooter`
