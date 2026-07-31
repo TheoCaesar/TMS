@@ -212,6 +212,7 @@ export interface UpdateProfileInput {
 export interface ToursQuery {
   page?: number;
   limit?: number;
+  q?: string; // server-side text search
   destinationId?: string;
   minPrice?: number;
   maxPrice?: number;

@@ -26,7 +26,7 @@ export class ApiError extends Error {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   // A FormData body is passed through untouched (multipart image upload);
   // anything else is JSON-encoded. See rawRequest$.
   body?: unknown;

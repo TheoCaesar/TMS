@@ -4,6 +4,7 @@ import { HomePage } from '@/pages/HomePage';
 import { TripsPage } from '@/pages/TripsPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { PersonalInfoPage } from '@/pages/PersonalInfoPage';
+import { EmergencyContactsPage } from '@/pages/EmergencyContactsPage';
 import { ExplorePage } from '@/modules/tours/pages/ExplorePage';
 import { TourDetailPage } from '@/modules/tours/pages/TourDetailPage';
 import { FlightSearchPage } from '@/modules/flights/pages/FlightSearchPage';
@@ -27,11 +28,16 @@ import { OperatorToursPage } from '@/modules/operator/pages/OperatorToursPage';
 import { AdminModerationPage } from '@/modules/admin/pages/AdminModerationPage';
 import { AdminDestinationsPage } from '@/modules/admin/pages/AdminDestinationsPage';
 import { RoleGate } from '@/components/layout/RoleGate';
+import { ScrollToTop } from '@/components/layout/ScrollToTop';
 import { ROUTES } from '@/lib/routes';
 
 function App() {
   return (
-    <Routes>
+    <>
+      {/* Above Routes so it also covers the auth screens, which render
+          outside AppLayout. */}
+      <ScrollToTop />
+      <Routes>
       <Route element={<AppLayout />}>
         <Route path={ROUTES.home} element={<HomePage />} />
         <Route path={ROUTES.explore} element={<ExplorePage />} />
@@ -83,13 +89,19 @@ function App() {
         />
         <Route path={ROUTES.profile} element={<ProfilePage />} />
         <Route path={ROUTES.profilePersonalInfo} element={<PersonalInfoPage />} />
-        <Route path={ROUTES.auth.login} element={<LoginPage />} />
-        <Route path={ROUTES.auth.register} element={<RegisterPage />} />
-        <Route path={ROUTES.auth.forgotPassword} element={<ForgotPasswordPage />} />
-        <Route path={ROUTES.auth.resetPassword} element={<ResetPasswordPage />} />
+        <Route path={ROUTES.profileEmergencyContacts} element={<EmergencyContactsPage />} />
         <Route path={ROUTES.paymentCallback} element={<PaymentCallbackPage />} />
       </Route>
-    </Routes>
+
+      {/* Auth screens are full-bleed two-pane layouts, so they sit OUTSIDE
+          AppLayout — no top nav, bottom tab bar or footer. AuthLayout's
+          Voyago wordmark links back home. */}
+      <Route path={ROUTES.auth.login} element={<LoginPage />} />
+      <Route path={ROUTES.auth.register} element={<RegisterPage />} />
+      <Route path={ROUTES.auth.forgotPassword} element={<ForgotPasswordPage />} />
+      <Route path={ROUTES.auth.resetPassword} element={<ResetPasswordPage />} />
+      </Routes>
+    </>
   );
 }
 

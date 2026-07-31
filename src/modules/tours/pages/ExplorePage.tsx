@@ -1,5 +1,5 @@
 import { LocateFixed, MapPin, RefreshCw, Search, Star, X } from 'lucide-react';
-import { Suspense, lazy, useMemo, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { forkJoin } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -34,9 +34,21 @@ export function ExplorePage() {
   const [category, setCategory] = useState<Category>('All');
   const [query, setQuery] = useState('');
 
+  // The API now supports ?q=, so search runs server-side across the whole
+  // catalogue instead of filtering the single page already in memory.
+  // Debounced so typing doesn't fire a request per keystroke.
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQuery(query.trim()), 350);
+    return () => clearTimeout(id);
+  }, [query]);
+
+  const queryRef = useRef(debouncedQuery);
+  queryRef.current = debouncedQuery;
+
   const { data, status, retry } = useApiResource(() =>
     forkJoin({
-      toursPage: toursApi.listTours$({ limit: 20 }),
+      toursPage: toursApi.listTours$({ limit: 20, q: queryRef.current || undefined }),
       destinationsPage: destinationsApi.listDestinations$(1, 50),
     }).pipe(
       map(({ toursPage, destinationsPage }) => ({
@@ -47,6 +59,18 @@ export function ExplorePage() {
       })),
     ),
   );
+
+  // Refetch on a new search term (the documented useApiResource pattern).
+  const retryRef = useRef(retry);
+  retryRef.current = retry;
+  const firstSearch = useRef(true);
+  useEffect(() => {
+    if (firstSearch.current) {
+      firstSearch.current = false;
+      return;
+    }
+    retryRef.current();
+  }, [debouncedQuery]);
 
   const [selectedDestinationId, setSelectedDestinationId] = useState<string | null>(null);
   const geo = useGeolocation();
@@ -84,8 +108,7 @@ export function ExplorePage() {
     if (selectedDestinationId) {
       tours = tours.filter((tour: Tour) => tour.destinationId === selectedDestinationId);
     }
-    const q = query.trim().toLowerCase();
-    if (q) tours = tours.filter((tour: Tour) => tour.title.toLowerCase().includes(q));
+    // No client-side title filter: `q` is applied by the API above.
 
     // Sort by how far each tour's destination is from the user, but only
     // once they've actually shared a location. Tours whose destination has
@@ -101,7 +124,7 @@ export function ExplorePage() {
       }
     }
     return tours;
-  }, [data, category, query, selectedDestinationId, geo.coords]);
+  }, [data, category, selectedDestinationId, geo.coords]);
 
   return (
     <div className="md:mx-auto md:max-w-7xl md:px-0 lg:px-2">

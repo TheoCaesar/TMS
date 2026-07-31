@@ -6,6 +6,7 @@ import { TextField } from '@/components/ui/TextField';
 import { PasswordField } from '@/components/ui/PasswordField';
 import { authApi, usersApi, ApiError } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
+import { AuthLayout } from '@/modules/auth/components/AuthLayout';
 import { ROUTES } from '@/lib/routes';
 
 // Matches the Figma "Create Account" screen (Full Name / Email / Phone /
@@ -50,8 +51,7 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="px-5 pt-6 pb-10 md:mx-auto md:max-w-md md:pt-16">
-      <h1 className="mb-6 text-2xl font-bold text-ink-900 dark:text-white">Create Account</h1>
+    <AuthLayout title="Create account" subtitle="Start planning your trip around Ghana.">
 
       <form onSubmit={handleSubmit}>
         <TextField
@@ -103,6 +103,6 @@ export function RegisterPage() {
           Log in
         </Link>
       </p>
-    </div>
+    </AuthLayout>
   );
 }

@@ -16,3 +16,15 @@ export function toMinorUnits(minor: number | undefined, major: number | undefine
   if (typeof major === 'number') return Math.round(major * 100);
   return 0;
 }
+
+// Same conversion for genuinely optional amounts (itinerary budgets and
+// per-item cost estimates), where "absent" has to stay absent rather than
+// collapsing to 0 — the UI hides the price entirely when it's undefined.
+export function toOptionalMinorUnits(
+  minor: number | undefined,
+  major: number | undefined,
+): number | undefined {
+  if (typeof minor === 'number') return minor;
+  if (typeof major === 'number') return Math.round(major * 100);
+  return undefined;
+}

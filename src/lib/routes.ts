@@ -19,6 +19,7 @@ export const ROUTES = {
   itineraries: '/itineraries',
   profile: '/profile',
   profilePersonalInfo: '/profile/personal-info',
+  profileEmergencyContacts: '/profile/emergency-contacts',
   // Role-gated consoles (RoleGate); hidden from the nav for other roles.
   operator: '/operator',
   admin: '/admin',

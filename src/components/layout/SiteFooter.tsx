@@ -39,7 +39,7 @@ const columns: { heading: string; links: { label: string; to: string }[] }[] = [
 
 export function SiteFooter() {
   return (
-    <footer className="mt-16 hidden bg-ink-900 text-white md:block">
+    <footer className="hidden bg-ink-900 text-white md:block">
       <div className="mx-auto max-w-7xl px-6 py-14 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[1.5fr_repeat(3,1fr)]">
           <div className="max-w-xs">

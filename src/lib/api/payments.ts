@@ -1,5 +1,7 @@
 import type { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { apiRequest$ } from './client';
+import { toMinorUnits } from './money';
 import type { InitiatePaymentInput, Payment } from './types';
 
 // Verified against a real response (booking TUR-2026-0005): authorizationUrl
@@ -16,6 +18,12 @@ export function initiatePayment$(input: InitiatePaymentInput): Observable<Initia
   return apiRequest$<InitiatePaymentResult>('/payments/initiate', { method: 'POST', body: input });
 }
 
+// Same major-vs-minor units mismatch as tours/bookings (see money.ts): the
+// live response sends `amount: 80`, not `amountMinor: 8000`.
+type RawPayment = Omit<Payment, 'amountMinor'> & { amountMinor?: number; amount?: number };
+
 export function verifyPayment$(reference: string): Observable<Payment> {
-  return apiRequest$<Payment>(`/payments/${reference}/verify`);
+  return apiRequest$<RawPayment>(`/payments/${reference}/verify`).pipe(
+    map((raw) => ({ ...raw, amountMinor: toMinorUnits(raw.amountMinor, raw.amount) })),
+  );
 }
