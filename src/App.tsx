@@ -23,6 +23,10 @@ import { BookingDetailPage } from '@/modules/bookings/pages/BookingDetailPage';
 import { ItinerariesPage } from '@/modules/itineraries/pages/ItinerariesPage';
 import { ItineraryDetailPage } from '@/modules/itineraries/pages/ItineraryDetailPage';
 import { PaymentCallbackPage } from '@/modules/payments/pages/PaymentCallbackPage';
+import { OperatorToursPage } from '@/modules/operator/pages/OperatorToursPage';
+import { AdminModerationPage } from '@/modules/admin/pages/AdminModerationPage';
+import { AdminDestinationsPage } from '@/modules/admin/pages/AdminDestinationsPage';
+import { RoleGate } from '@/components/layout/RoleGate';
 import { ROUTES } from '@/lib/routes';
 
 function App() {
@@ -50,6 +54,33 @@ function App() {
         <Route path={`${ROUTES.bookings}/:reference`} element={<BookingDetailPage />} />
         <Route path={ROUTES.itineraries} element={<ItinerariesPage />} />
         <Route path={`${ROUTES.itineraries}/:id`} element={<ItineraryDetailPage />} />
+        {/* Role-gated consoles. RoleGate is presentation only — it keeps
+            someone out of a screen whose every button would 403 — the API
+            enforces the role on each call regardless. */}
+        <Route
+          path={ROUTES.operator}
+          element={
+            <RoleGate allow={['OPERATOR']} title="Operator">
+              <OperatorToursPage />
+            </RoleGate>
+          }
+        />
+        <Route
+          path={ROUTES.admin}
+          element={
+            <RoleGate allow={['ADMIN']} title="Admin">
+              <AdminModerationPage />
+            </RoleGate>
+          }
+        />
+        <Route
+          path={ROUTES.adminDestinations}
+          element={
+            <RoleGate allow={['ADMIN']} title="Destinations">
+              <AdminDestinationsPage />
+            </RoleGate>
+          }
+        />
         <Route path={ROUTES.profile} element={<ProfilePage />} />
         <Route path={ROUTES.profilePersonalInfo} element={<PersonalInfoPage />} />
         <Route path={ROUTES.auth.login} element={<LoginPage />} />
