@@ -71,9 +71,13 @@ function FacilityCard({ facility }: { facility: Facility }) {
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
+        {/* Call is the primary action (solid brand); Directions is the
+            secondary (tinted brand). Red is reserved for the SOS trigger and
+            the national lines, so it still reads as "this is the urgent one"
+            rather than colouring every button on the page. */}
         <a
           href={`tel:${facility.phone}`}
-          className="flex items-center justify-center gap-1.5 rounded-xl bg-danger-500 py-2.5 text-sm font-semibold text-white transition hover:bg-danger-600"
+          className="flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
         >
           <Phone className="size-4" /> Call
         </a>
@@ -81,7 +85,7 @@ function FacilityCard({ facility }: { facility: Facility }) {
           href={directionsUrl(facility)}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700"
+          className="flex items-center justify-center gap-1.5 rounded-xl border border-brand-600/30 bg-brand-50 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100 dark:border-brand-500/30 dark:bg-brand-700/20 dark:text-brand-500 dark:hover:bg-brand-700/30"
         >
           <Navigation className="size-4" /> Directions
         </a>

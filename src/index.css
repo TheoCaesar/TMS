@@ -26,8 +26,12 @@
   --color-ink-700: #2c3652;
 
   --color-accent-500: #f5a623;
-  --color-danger-500: #e3413a;
-  --color-danger-600: #cc2f29;
+  /* Dialled back from #e3413a, which read as very loud across the big
+     Emergency surfaces (full-bleed header, SOS block, Call buttons). The
+     deeper tone also lifts contrast with white text from 4.13:1 — below
+     WCAG AA for normal text — to 5.19:1, which passes. */
+  --color-danger-500: #c8372f;
+  --color-danger-600: #a92c25;
 
   --color-app-bg: #f6f7fb;
 
