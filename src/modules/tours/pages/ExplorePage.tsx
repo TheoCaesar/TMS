@@ -1,5 +1,5 @@
-import { MapPin, RefreshCw, Search, Star } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { LocateFixed, MapPin, RefreshCw, Search, Star, X } from 'lucide-react';
+import { Suspense, lazy, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { forkJoin } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -7,6 +7,19 @@ import { destinationsApi, toursApi, type Destination, type Tour } from '@/lib/ap
 import { useApiResource } from '@/hooks/useApiResource';
 import { Skeleton, SkeletonLine, SkeletonRegion } from '@/components/ui/Skeleton';
 import { formatDuration } from '@/lib/format';
+import { haversineKm, useGeolocation, type LatLng } from '@/lib/geo';
+import type { MapMarker } from '@/components/map/MapView';
+
+// MapLibre is ~800 KB before gzip, so it loads on demand rather than in the
+// entry bundle. The <Skeleton> below is the same size as the map frame, so
+// the chunk arriving doesn't move anything.
+const MapView = lazy(() =>
+  import('@/components/map/MapView').then((m) => ({ default: m.MapView })),
+);
+
+// Centre of Ghana — only used to frame the map when no destination has
+// coordinates, which shouldn't happen with the current seed data.
+const GHANA_CENTER: LatLng = { lat: 7.95, lng: -1.03 };
 
 // Module M1 — Place of Interest Locator in the Figma design (search,
 // category filters, map, "Nearby Places" list). The live API has no
@@ -35,13 +48,60 @@ export function ExplorePage() {
     ),
   );
 
+  const [selectedDestinationId, setSelectedDestinationId] = useState<string | null>(null);
+  const geo = useGeolocation();
+
+  // Only destinations the API gave real coordinates for get a pin. The
+  // others are simply absent — no placeholder position is invented.
+  const markers = useMemo<MapMarker[]>(() => {
+    if (!data) return [];
+    return [...data.destinationsById.values()]
+      .filter((d): d is Destination & LatLng => d.lat !== undefined && d.lng !== undefined)
+      .map((d) => ({ id: d.id, lat: d.lat, lng: d.lng, label: d.name }));
+  }, [data]);
+
+  // Camera: the user's location if they shared it, else the selected
+  // destination. With neither, the map frames every pin itself
+  // (fitToMarkers below), so this is just the pre-load starting position.
+  const camera = useMemo(() => {
+    if (geo.coords) return { center: geo.coords, zoom: 10 };
+    const selected = selectedDestinationId
+      ? markers.find((m) => m.id === selectedDestinationId)
+      : undefined;
+    if (selected) return { center: { lat: selected.lat, lng: selected.lng }, zoom: 11 };
+    return { center: GHANA_CENTER, zoom: 6 };
+  }, [geo.coords, selectedDestinationId, markers]);
+
+  const selectedDestination = selectedDestinationId
+    ? data?.destinationsById.get(selectedDestinationId)
+    : undefined;
+
   const filteredTours = useMemo(() => {
     if (!data) return [];
     if (category !== 'All') return [];
+
+    let tours = data.tours;
+    if (selectedDestinationId) {
+      tours = tours.filter((tour: Tour) => tour.destinationId === selectedDestinationId);
+    }
     const q = query.trim().toLowerCase();
-    if (!q) return data.tours;
-    return data.tours.filter((tour: Tour) => tour.title.toLowerCase().includes(q));
-  }, [data, category, query]);
+    if (q) tours = tours.filter((tour: Tour) => tour.title.toLowerCase().includes(q));
+
+    // Sort by how far each tour's destination is from the user, but only
+    // once they've actually shared a location. Tours whose destination has
+    // no coordinates sort last rather than being dropped.
+    if (geo.coords) {
+      const here = geo.coords;
+      tours = [...tours].sort((a, b) => distanceFor(a) - distanceFor(b));
+
+      function distanceFor(tour: Tour): number {
+        const destination = data?.destinationsById.get(tour.destinationId);
+        if (destination?.lat === undefined || destination.lng === undefined) return Infinity;
+        return haversineKm(here, { lat: destination.lat, lng: destination.lng });
+      }
+    }
+    return tours;
+  }, [data, category, query, selectedDestinationId, geo.coords]);
 
   return (
     <div className="md:mx-auto md:max-w-7xl md:px-0 lg:px-2">
@@ -74,8 +134,57 @@ export function ExplorePage() {
         ))}
       </div>
 
-      <div className="mx-5 mb-6 flex h-32 items-center justify-center rounded-card bg-neutral-100 text-sm text-neutral-400 dark:bg-neutral-900 md:mx-8 md:h-48">
-        Map View
+      {/* SRS FR-POI-04: a map of everything in the current viewport. The
+          frame is static and owns its height, so the lazy chunk and the
+          tiles both fill in without moving the list below. */}
+      <div className="mx-5 mb-3 md:mx-8">
+        <Suspense fallback={<Skeleton className="h-48 w-full md:h-72" />}>
+          <MapView
+            center={camera.center}
+            zoom={camera.zoom}
+            markers={markers}
+            selectedId={selectedDestinationId}
+            onMarkerSelect={setSelectedDestinationId}
+            fitToMarkers={!geo.coords && !selectedDestinationId}
+            ariaLabel="Map of destinations"
+            className="h-48 w-full md:h-72"
+          />
+        </Suspense>
+      </div>
+
+      <div className="mx-5 mb-6 flex flex-wrap items-center gap-2 md:mx-8">
+        <button
+          type="button"
+          onClick={geo.request}
+          disabled={geo.status === 'locating'}
+          className="flex items-center gap-1.5 rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium text-ink-900 disabled:opacity-50 dark:bg-neutral-900 dark:text-white"
+        >
+          <LocateFixed className="size-4" />
+          {geo.status === 'locating'
+            ? 'Locating…'
+            : geo.status === 'ready'
+              ? 'Sorted by distance'
+              : 'Near me'}
+        </button>
+
+        {selectedDestination && (
+          <button
+            type="button"
+            onClick={() => setSelectedDestinationId(null)}
+            className="flex items-center gap-1.5 rounded-full bg-brand-50 px-4 py-2 text-sm font-medium text-brand-600 dark:bg-brand-700/20 dark:text-brand-500"
+          >
+            {selectedDestination.name} <X className="size-4" />
+          </button>
+        )}
+
+        {geo.status === 'denied' && (
+          <span className="text-sm text-neutral-400">
+            Location unavailable — showing all places.
+          </span>
+        )}
+        {geo.status === 'unsupported' && (
+          <span className="text-sm text-neutral-400">This browser can’t share a location.</span>
+        )}
       </div>
 
       <section className="px-5 md:px-8">
@@ -125,6 +234,14 @@ export function ExplorePage() {
         {status === 'ready' && category !== 'All' && (
           <p className="py-6 text-center text-sm text-neutral-400">
             No {category.toLowerCase()} listed yet — check back soon.
+          </p>
+        )}
+
+        {status === 'ready' && category === 'All' && filteredTours.length === 0 && (
+          <p className="py-6 text-center text-sm text-neutral-400">
+            {selectedDestination
+              ? `No tours in ${selectedDestination.name} yet.`
+              : 'No places match that search.'}
           </p>
         )}
 

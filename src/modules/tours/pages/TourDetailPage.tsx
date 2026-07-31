@@ -1,5 +1,14 @@
-import { ChevronLeft, Minus, Plus, RefreshCw, MapPin, Star, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import {
+  ChevronLeft,
+  Minus,
+  Navigation,
+  Plus,
+  RefreshCw,
+  MapPin,
+  Star,
+  Users,
+} from 'lucide-react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { forkJoin, of, throwError } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
@@ -13,10 +22,16 @@ import {
   type Departure,
 } from '@/lib/api';
 import { useApiResource } from '@/hooks/useApiResource';
-import { SkeletonLine, SkeletonRegion, SkeletonText } from '@/components/ui/Skeleton';
+import { Skeleton, SkeletonLine, SkeletonRegion, SkeletonText } from '@/components/ui/Skeleton';
 import { TourReviews } from '@/modules/tours/components/TourReviews';
 import { formatDate, formatDuration, formatMoney, formatTime } from '@/lib/format';
+import { directionsUrl } from '@/lib/geo';
 import { ROUTES } from '@/lib/routes';
+
+// Loaded on demand — see the note in ExplorePage.
+const MapView = lazy(() =>
+  import('@/components/map/MapView').then((m) => ({ default: m.MapView })),
+);
 
 // Tour detail — reached from ExplorePage. Real data: GET /tours/{slug},
 // GET /tours/{id}/departures, and the tour's destination for context.
@@ -187,6 +202,46 @@ export function TourDetailPage() {
             </>
           )}
         </div>
+
+        {/* SRS FR-POI-01: a location map on the detail page. Rendered only
+            when the destination really has coordinates -- a tour whose
+            destination has none gets no section at all, rather than a pin
+            dropped somewhere plausible. */}
+        {destination?.lat !== undefined && destination.lng !== undefined && (
+          <section className="mt-6">
+            <h2 className="mb-3 text-lg font-bold text-ink-900 dark:text-white">Location</h2>
+            <Suspense fallback={<Skeleton className="h-40 w-full" />}>
+              <MapView
+                center={{ lat: destination.lat, lng: destination.lng }}
+                zoom={12}
+                markers={[
+                  {
+                    id: destination.id,
+                    lat: destination.lat,
+                    lng: destination.lng,
+                    label: destination.name,
+                  },
+                ]}
+                interactive={false}
+                ariaLabel={`Map of ${destination.name}`}
+                className="h-40 w-full"
+              />
+            </Suspense>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                {destination.name} · {destination.region}
+              </span>
+              <a
+                href={directionsUrl({ lat: destination.lat, lng: destination.lng })}
+                target="_blank"
+                rel="noreferrer"
+                className="flex shrink-0 items-center gap-1.5 rounded-full bg-neutral-100 px-4 py-2 text-sm font-medium text-ink-900 dark:bg-neutral-900 dark:text-white"
+              >
+                <Navigation className="size-4" /> Directions
+              </a>
+            </div>
+          </section>
+        )}
 
         <h2 className="mb-3 mt-6 text-lg font-bold text-ink-900 dark:text-white">
           Upcoming Departures

@@ -11,6 +11,19 @@ export default defineConfig({
       '@': path.resolve(import.meta.dirname, './src'),
     },
   },
+  optimizeDeps: {
+    // MapLibre parses vector tiles in a Web Worker it spawns by URL. Vite's
+    // dep pre-bundling rewrites that URL to
+    // /node_modules/.vite/deps/maplibre-gl-worker.mjs, which fails to load
+    // (net::ERR_FAILED). The failure is silent in the worst way: the style,
+    // sprites and raster tiles all load fine over HTTP on the main thread,
+    // so the map looks alive — but no .pbf is ever requested, so it renders
+    // as an empty background with markers floating on it.
+    // Excluding it from pre-bundling lets the worker resolve from the real
+    // package path. Dev-only concern; the production build emits the worker
+    // as a normal asset.
+    exclude: ['maplibre-gl'],
+  },
   server: {
     // The live API (see .env.example) sends no CORS headers, so the
     // browser can't call it directly in dev. Proxying server-to-server
