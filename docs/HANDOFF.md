@@ -95,7 +95,8 @@ Working convention established across every screen so far:
 | `/hotels/:slug` | ✅ Built from screenshot | Full detail for Labadi Beach Hotel (matches "Hotel details" screenshot: amenities, room picker, reviews, sticky Reserve bar). Coconut Grove Hotel only had list-view data in the screenshot, so its detail page shows an honest "no rooms/reviews yet" empty state rather than invented data |
 | `/food` | ✅ Built from screenshot | "Food & Drinks" search, price/cuisine/dietary filters (cuisine filter is real, filtering the static list), View on Map, restaurant list. UI-only, no backend for this module |
 | `/food/:slug` | ✅ Built from screenshot | Full detail for Asanka Local (matches "food-detail" screenshot: tags, Menu/Reserve/Reviews/Info tabs, menu sections, sticky Reserve a Table bar). The other 3 restaurants only had list-view data, so their Menu tab (and all tabs for them) shows an honest empty state |
-| `/transport` | 🟡 UI built, no data | Matches a captured Figma screen; no backend to wire, no mock data per user's call |
+| `/transport` | ✅ Built from screenshot | Extended to match a fuller "Transport details" screenshot: Estimated Fare, Find a Driver, Available Drivers Nearby. No backend to wire, no mock data beyond the design's own content |
+| `/transport/active-ride` | ✅ Built from screenshot | The design's own "View Active Ride (Demo)" preview screen (matches "find-a-driver" screenshot) — static map illustration, driver card, Chat/Call/Cancel. Cancel navigates back to `/transport`; Chat/Call are inert |
 | `/emergency` | ✅ Built from screenshot | SOS trigger, Quick Actions grid, Nearest Medical Facilities list — matches user-supplied screenshot. UI-only, no backend for this module |
 | `/bookings` (list, Calendar nav tab) | 🟡 Placeholder, unresolved | See "Open questions" — may or may not be a distinct screen from `/trips` |
 

@@ -14,6 +14,7 @@ import { AccommodationDetailPage } from '@/modules/accommodation/pages/Accommoda
 import { FoodDiscoverPage } from '@/modules/food/pages/FoodDiscoverPage';
 import { RestaurantDetailPage } from '@/modules/food/pages/RestaurantDetailPage';
 import { TransportBookingPage } from '@/modules/transport/pages/TransportBookingPage';
+import { ActiveRidePage } from '@/modules/transport/pages/ActiveRidePage';
 import { EmergencyPage } from '@/modules/emergency/pages/EmergencyPage';
 import { LoginPage } from '@/modules/auth/pages/LoginPage';
 import { RegisterPage } from '@/modules/auth/pages/RegisterPage';
@@ -35,6 +36,7 @@ function App() {
         <Route path={ROUTES.food} element={<FoodDiscoverPage />} />
         <Route path={`${ROUTES.food}/:slug`} element={<RestaurantDetailPage />} />
         <Route path={ROUTES.transport} element={<TransportBookingPage />} />
+        <Route path={ROUTES.transportActiveRide} element={<ActiveRidePage />} />
         <Route path={ROUTES.emergency} element={<EmergencyPage />} />
         <Route path={ROUTES.trips} element={<TripsPage />} />
         <Route path={ROUTES.bookings} element={<BookingsPage />} />

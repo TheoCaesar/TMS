@@ -9,6 +9,7 @@ export const ROUTES = {
   hotels: '/hotels',
   food: '/food',
   transport: '/transport',
+  transportActiveRide: '/transport/active-ride',
   emergency: '/emergency',
   trips: '/trips',
   bookings: '/bookings',
