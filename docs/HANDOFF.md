@@ -237,12 +237,18 @@ endpoint exists to clean them up):
   ratings/loyalty), `danger` (red, destructive/emergency), plus
   `--radius-card`. Sampled from Figma screenshots, not pixel-verified
   against live computed styles.
-- **Layout**: `AppLayout` is mobile-first (`max-w-md`), widening at
-  `md:`/`lg:` into a top-nav desktop layout (`TopNav` replaces
-  `BottomNav`). `transform-gpu` on the layout root makes it the
-  containing block for `position: fixed` children (nav, SOS button,
-  sticky booking bar) so they stay anchored to that column at any
-  breakpoint instead of the full viewport.
+- **Layout**: `AppLayout` is mobile-first (`max-w-md`) below `md`, and a
+  full-width web page at `md:`/`lg:` (`TopNav` replaces `BottomNav`) — see
+  "Desktop vs mobile shell" and the `transform-gpu` warning above; this
+  bullet used to describe the pre-fix behavior and was stale.
+- **PWA**: the app is installable (`vite-plugin-pwa`, configured in
+  `vite.config.ts`). Manifest + service worker are generated at build
+  time only (`npm run build` / `npm run preview` — not `npm run dev`);
+  icons live in `public/` (`icon.svg` source, PNGs generated via
+  `node scripts/generate-icons.mjs`, which needs the `sharp` devDependency).
+  `navigateFallback` serves the cached shell for offline SPA navigation,
+  explicitly denylisted for `/api/` and `/socket.io/` so those always hit
+  the real network, never a cached fallback.
 - **Shared auth state** (`src/lib/auth.tsx` + `src/hooks/useAuth.ts`).
   `<AuthProvider>` wraps the app in `main.tsx` and owns the one
   `GET /users/me` for the whole session; `useAuth()` returns
