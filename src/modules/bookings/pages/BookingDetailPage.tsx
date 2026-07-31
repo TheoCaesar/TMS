@@ -18,6 +18,9 @@ export function BookingDetailPage() {
   const [payError, setPayError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [canceling, setCanceling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   const { data: bookingResource, status, retry } = useApiResource(() => {
     if (!reference) return throwError(() => new Error('Missing booking reference'));
@@ -35,6 +38,23 @@ export function BookingDetailPage() {
       error: (err: unknown) => {
         setPayError(err instanceof ApiError ? err.message : 'Could not start payment.');
         setPaying(false);
+      },
+    });
+  }
+
+  function handleCancel() {
+    if (!reference) return;
+    setCanceling(true);
+    setCancelError(null);
+    bookingsApi.cancelBooking$(reference).subscribe({
+      next: () => {
+        setConfirmingCancel(false);
+        setCanceling(false);
+        retry();
+      },
+      error: (err: unknown) => {
+        setCancelError(err instanceof ApiError ? err.message : 'Could not cancel booking.');
+        setCanceling(false);
       },
     });
   }
@@ -135,6 +155,45 @@ export function BookingDetailPage() {
             <RefreshCw className={`size-4 ${verifying ? 'animate-spin' : ''}`} />
             I've already paid — check status
           </button>
+        </div>
+      )}
+
+      {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (
+        <div className="mt-5">
+          {cancelError && <p className="mb-3 text-sm text-danger-500">{cancelError}</p>}
+          {confirmingCancel ? (
+            <div className="space-y-3 rounded-card border border-danger-500/30 bg-danger-500/5 p-4">
+              <p className="text-sm text-ink-900 dark:text-white">
+                Cancel this booking? This can't be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmingCancel(false)}
+                  disabled={canceling}
+                  className="flex-1 rounded-xl border border-neutral-200 py-2.5 text-sm font-semibold text-neutral-600 disabled:opacity-60 dark:border-neutral-700 dark:text-neutral-400"
+                >
+                  Keep it
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={canceling}
+                  className="flex-1 rounded-xl bg-danger-500 py-2.5 text-sm font-semibold text-white transition hover:bg-danger-600 disabled:opacity-60"
+                >
+                  {canceling ? 'Cancelling…' : 'Yes, cancel'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmingCancel(true)}
+              className="w-full text-sm font-medium text-danger-500"
+            >
+              Cancel booking
+            </button>
+          )}
         </div>
       )}
     </div>

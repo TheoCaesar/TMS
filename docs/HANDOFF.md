@@ -83,7 +83,7 @@ Working convention established across every screen so far:
 | `/` (Home) | ✅ Real data | Quick Access grid, Featured Destinations from `GET /destinations` |
 | `/explore` | ✅ Real data | Tours + Destinations; category pills only "All" populated |
 | `/explore/:slug` (Tour Detail) | ✅ Real data + booking | Full booking flow: select departure → seats → Book Now |
-| `/bookings/:reference` (Booking Detail) | ✅ Real data + payment | Pay with Paystack, manual verify fallback |
+| `/bookings/:reference` (Booking Detail) | ✅ Real data + payment | Pay with Paystack, manual verify fallback, Cancel booking (with inline confirm) for PENDING/CONFIRMED — verified end-to-end against the live API (PENDING → CANCELLED) |
 | `/payments/callback` | ✅ Built | Handles Paystack redirect; best-guess URL, see below |
 | `/login`, `/register` | ✅ Real, verified E2E | Register matches a captured Figma screen |
 | `/trips` (My Trips / "My Bookings") | ⚠️ Built, unverified happy path | Real data via `GET /bookings/me`, but that endpoint 500s (see below) — only the error/retry state has been visually confirmed |
@@ -124,12 +124,11 @@ enum). Gaps found:
    current payment flow relies on the "manual verify fallback"
    instead (see known issue #3 below). Wiring the socket would
    directly clean up that exact pain point.
-3. **Cancel-booking is half-wired.** `cancelBooking$()`
-   (`POST /bookings/:reference/cancel`) already exists in
-   `src/lib/api/bookings.ts`, but `BookingDetailPage.tsx` never calls
-   it — no Cancel button in the UI, only a read-only "Booking
-   cancelled" state once a booking is already cancelled some other
-   way.
+3. ~~Cancel-booking is half-wired.~~ **Fixed** — `BookingDetailPage.tsx`
+   now has a Cancel booking action (inline "are you sure" confirm, no
+   native dialogs) for PENDING/CONFIRMED bookings, calling the
+   already-existing `cancelBooking$()`. Verified end-to-end against
+   the live API with a real booking (PENDING → CANCELLED).
 4. **Minor type mismatch.** `types.ts`'s `DepartureStatus` is
    `'SCHEDULED' | 'CLOSED' | 'CANCELLED'`; the guide's `Departure`
    shape only lists `'SCHEDULED' | 'CANCELLED'`. Worth confirming
@@ -231,9 +230,7 @@ iframe — drag the visible right-side scrollbar thumb instead
 2. Re-test `POST /payments/initiate` and `GET /bookings/me` — if fixed,
    verify `/trips`'s real card rendering (currently unconfirmed) and
    re-confirm the Paystack payment flow.
-3. Wire the Cancel-booking button on Booking Detail — smallest lift of
-   the items in "Backend capabilities not yet used" above.
-4. Build the AI Itinerary Planner — biggest opportunity in "Backend
-   capabilities not yet used" above; needs a new `src/lib/api/
+3. Build the AI Itinerary Planner — biggest remaining opportunity in
+   "Backend capabilities not yet used" above; needs a new `src/lib/api/
    itineraries.ts` and UI, likely off Explore or Home.
-5. Consider shared auth state (see "Known gap" above).
+4. Consider shared auth state (see "Known gap" above).
