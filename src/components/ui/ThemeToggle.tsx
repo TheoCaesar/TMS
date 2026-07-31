@@ -20,7 +20,7 @@ export function ThemeToggle({ variant = 'icon' }: { variant?: 'icon' | 'segmente
       <div
         role="radiogroup"
         aria-label="Theme"
-        className="flex gap-1 rounded-full bg-neutral-100 p-1 dark:bg-neutral-800"
+        className="flex w-full gap-1 rounded-full bg-neutral-100 p-1 dark:bg-neutral-800"
       >
         {options.map(({ value, label, icon: Icon }) => (
           <button
@@ -29,14 +29,14 @@ export function ThemeToggle({ variant = 'icon' }: { variant?: 'icon' | 'segmente
             role="radio"
             aria-checked={preference === value}
             onClick={() => setPreference(value)}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+            className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-semibold transition ${
               preference === value
                 ? 'bg-white text-ink-900 shadow-sm dark:bg-neutral-950 dark:text-white'
                 : 'text-neutral-500 dark:text-neutral-400'
             }`}
           >
-            <Icon className="size-3.5" />
-            {label}
+            <Icon className="size-3.5 shrink-0" />
+            <span className="truncate">{label}</span>
           </button>
         ))}
       </div>

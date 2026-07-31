@@ -97,8 +97,8 @@ function ProfileContent() {
       </h1>
 
       <div className="md:grid md:grid-cols-[320px_1fr] md:items-start md:gap-8">
-        <div className={outlet ? 'hidden md:block' : ''}>
-          <div className="mb-6 flex items-center gap-4 rounded-card border border-neutral-100 p-4 dark:border-neutral-800 md:sticky md:top-24 md:flex-col md:items-start md:gap-3 md:p-6">
+        <div className={`md:sticky md:top-24 md:self-start ${outlet ? 'hidden md:block' : ''}`}>
+          <div className="mb-6 flex items-center gap-4 rounded-card border border-neutral-100 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-950 md:flex-col md:items-start md:gap-3 md:p-6">
             {profile ? (
               <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-50 text-2xl font-bold text-brand-600 dark:bg-brand-700/20 md:size-20 md:text-3xl">
                 {profile.avatarUrl ? (
@@ -163,12 +163,12 @@ function ProfileContent() {
 
           {/* Desktop gets the icon toggle in TopNav; mobile has no top bar,
               so the full three-way picker lives here. */}
-          <div className="mb-4 flex items-center justify-between gap-4 rounded-card border border-neutral-100 px-4 py-3 dark:border-neutral-800">
-            <span className="font-medium text-ink-900 dark:text-white">Appearance</span>
+          <div className="mb-4 rounded-card border border-neutral-100 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-neutral-950">
+            <span className="mb-2 block font-medium text-ink-900 dark:text-white">Appearance</span>
             <ThemeToggle variant="segmented" />
           </div>
 
-          <div className="mb-4 overflow-hidden rounded-card border border-neutral-100 dark:border-neutral-800">
+          <div className="mb-4 overflow-hidden rounded-card border border-neutral-100 bg-white dark:border-neutral-800 dark:bg-neutral-950">
             {menuRows.map((row, i) => {
               const content = (isActive?: boolean) => (
                 <>

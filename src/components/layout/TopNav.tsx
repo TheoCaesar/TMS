@@ -51,9 +51,23 @@ export function TopNav() {
           <NavLink
             to={ROUTES.profile}
             aria-label={user.fullName}
-            className="flex size-9 items-center justify-center rounded-full bg-neutral-100 text-sm font-semibold text-ink-900 dark:bg-neutral-900 dark:text-white"
+            className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-100 text-sm font-semibold text-ink-900 dark:bg-neutral-900 dark:text-white"
           >
-            {getInitials(user.fullName)}
+            {/* Falls back to initials when there's no photo — and also if the
+                photo 404s, since a broken avatar shouldn't leave an empty
+                circle in the nav. */}
+            {user.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt=""
+                className="size-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            ) : (
+              getInitials(user.fullName)
+            )}
           </NavLink>
         ) : (
           <NavLink
