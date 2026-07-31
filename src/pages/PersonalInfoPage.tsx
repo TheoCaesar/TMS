@@ -49,11 +49,14 @@ export function PersonalInfoPage() {
   }
 
   return (
-    <div className="px-5 pt-6 pb-10 md:mx-auto md:max-w-md md:pt-10">
+    <div className="px-5 pt-6 pb-10 md:max-w-lg md:px-0 md:pt-0">
       <div className="mb-6 flex items-center gap-3">
+        {/* Only needed on mobile, where this page replaces the settings list
+            full-screen. On desktop the list stays visible right alongside
+            this pane, so a "back" affordance would be redundant. */}
         <Link
           to={ROUTES.profile}
-          className="flex size-9 items-center justify-center rounded-full bg-neutral-100 text-ink-900 dark:bg-neutral-900 dark:text-white"
+          className="flex size-9 items-center justify-center rounded-full bg-neutral-100 text-ink-900 dark:bg-neutral-900 dark:text-white md:hidden"
         >
           <ChevronLeft className="size-5" />
         </Link>
