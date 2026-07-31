@@ -8,6 +8,7 @@ import { PersonalInfoPage } from '@/pages/PersonalInfoPage';
 import { ExplorePage } from '@/modules/tours/pages/ExplorePage';
 import { TourDetailPage } from '@/modules/tours/pages/TourDetailPage';
 import { FlightSearchPage } from '@/modules/flights/pages/FlightSearchPage';
+import { FlightResultsPage } from '@/modules/flights/pages/FlightResultsPage';
 import { AccommodationSearchPage } from '@/modules/accommodation/pages/AccommodationSearchPage';
 import { FoodDiscoverPage } from '@/modules/food/pages/FoodDiscoverPage';
 import { TransportBookingPage } from '@/modules/transport/pages/TransportBookingPage';
@@ -26,6 +27,7 @@ function App() {
         <Route path={ROUTES.explore} element={<ExplorePage />} />
         <Route path={`${ROUTES.explore}/:slug`} element={<TourDetailPage />} />
         <Route path={ROUTES.flights} element={<FlightSearchPage />} />
+        <Route path={ROUTES.flightResults} element={<FlightResultsPage />} />
         <Route path={ROUTES.hotels} element={<AccommodationSearchPage />} />
         <Route path={ROUTES.food} element={<FoodDiscoverPage />} />
         <Route path={ROUTES.transport} element={<TransportBookingPage />} />

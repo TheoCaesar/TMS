@@ -5,6 +5,7 @@ export const ROUTES = {
   home: '/',
   explore: '/explore',
   flights: '/flights',
+  flightResults: '/flights/results',
   hotels: '/hotels',
   food: '/food',
   transport: '/transport',

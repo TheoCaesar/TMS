@@ -1,5 +1,7 @@
 import { ArrowLeftRight, Calendar, ChevronDown, Users } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ROUTES } from '@/lib/routes';
 
 // Module M2 — Flight Booking (SRS 3.3, FR-FLT-01 to 12). No backend
 // endpoint exists for this module (see docs/HANDOFF.md) — this is UI
@@ -113,12 +115,12 @@ export function FlightSearchPage() {
       </div>
 
       <div className="px-5 pt-5">
-        <button
-          type="button"
-          className="w-full rounded-xl bg-brand-600 py-3.5 text-base font-semibold text-white transition hover:bg-brand-700"
+        <Link
+          to={ROUTES.flightResults}
+          className="block w-full rounded-xl bg-brand-600 py-3.5 text-center text-base font-semibold text-white transition hover:bg-brand-700"
         >
           Search Flights
-        </button>
+        </Link>
       </div>
 
       <section className="px-5 py-6">

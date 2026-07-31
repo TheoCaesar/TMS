@@ -90,6 +90,7 @@ Working convention established across every screen so far:
 | `/profile` | ✅ Real data, verified E2E | Header + settings menu from a user screenshot |
 | `/profile/personal-info` | ✅ Real data + save, verified E2E | The one settings row with backend support (`PATCH /users/me`) |
 | `/flights` | ✅ Built from screenshot | Trip type toggle, From/To/dates/passengers/cabin form, Popular Routes — matches user-supplied screenshot. UI-only, no backend for this module |
+| `/flights/results` | ✅ Built from screenshot | "Flight options" screen — 4 static flight offer cards (matches design), filter pills, Select buttons. UI-only, results don't reflect the (also inert) search form inputs |
 | `/hotels`, `/food` | 🟡 Placeholder | `PlaceholderPage` only — no Figma capture yet, no backend either |
 | `/transport` | 🟡 UI built, no data | Matches a captured Figma screen; no backend to wire, no mock data per user's call |
 | `/emergency` | ✅ Built from screenshot | SOS trigger, Quick Actions grid, Nearest Medical Facilities list — matches user-supplied screenshot. UI-only, no backend for this module |
