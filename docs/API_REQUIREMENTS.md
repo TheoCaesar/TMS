@@ -384,6 +384,75 @@ a CMS feed.
 
 ---
 
+## 7b. Gaps in the **existing** Tours vertical (added 2026-07-31)
+
+Unlike everything above, these aren't missing modules — they're small gaps in
+a vertical that already ships. Each one blocks a screen that is built and
+wired right now. Cheapest wins in this document.
+
+### 7b.1 No way for an operator to list their own tours
+
+`GET /tours` and `GET /tours/:slug` both return **`APPROVED` only**, and
+there is no `GET /tours/mine`. The consequence is sharper than it sounds: a
+tour is created as `DRAFT`, so **the operator cannot read back the tour they
+just created**. If the client drops the create response, the tour is
+unreachable — it can never be edited, given departures, or submitted for
+review.
+
+The operator console (`/operator`) works around this by keeping the create
+response in `localStorage` and labelling that list as device-local. That is a
+workaround, not a design.
+
+```
+GET /tours/mine?page=&limit=&status=      # OPERATOR, own tours, any status
+    -> paginated Tour
+```
+
+### 7b.2 No moderation queue
+
+Admins are expected to approve tours, but nothing lists the tours awaiting
+approval — `GET /tours` is `APPROVED`-only and takes no `status` filter. So
+`/admin` can only act on a tour id pasted in by hand.
+
+```
+GET /tours?status=PENDING_REVIEW          # ADMIN; or GET /admin/tours/pending
+    -> paginated Tour
+```
+
+### 7b.3 Money fields contradict the integration guide
+
+The guide specifies integer **minor** units throughout (§5, "Money"). The
+running API sends **major** units under different names:
+
+| Endpoint | Guide says | API actually sends |
+| --- | --- | --- |
+| `GET /tours`, `/tours/:slug` | `priceMinor: 8000` | `price: 80` |
+| `GET /bookings/me`, `/bookings/:ref` | `totalMinor: 8000` | `total: 80` |
+
+This rendered a literal **`GHSNaN`** on Tour Detail, My Trips and Booking
+Detail. The frontend now normalises both shapes at the API boundary
+(`src/lib/api/money.ts`) and accepts whichever arrives, so fixing this
+backend-side is safe and needs no coordinated release. Please align to the
+guide — minor units — since decimals in major units invite rounding bugs.
+
+### 7b.4 `POST /uploads/image` is closed to tourists
+
+Already flagged in the guide's own §10.1: `PATCH /users/me` accepts
+`avatarUrl` and the intended flow is upload-then-set, but the upload endpoint
+requires `OPERATOR`/`ADMIN`, so a tourist gets `403` and cannot set an avatar
+at all except from an externally hosted URL. Either open it to `TOURIST`
+(scoped to avatars) or add `POST /users/me/avatar`.
+
+### 7b.5 Already fixed — worth noting
+
+- **`GET /bookings/me` no longer 500s.** It returned real paginated data on
+  2026-07-31. Item 1 of §8's delivery order is done.
+- **Bookings already embed an `item`** (`id`, `slug`, `title`, `imageUrl`,
+  `startsAt`) — half of §8 item 2, though it's undocumented in the guide.
+  Please document it. `TripsPage` still reconstructs the tour title by
+  cross-referencing every tour's departures and can drop that whole join
+  once this is official.
+
 ## 8. Suggested delivery order
 
 Sequenced by value-per-unit-of-work, not by module.

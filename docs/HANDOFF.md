@@ -9,7 +9,8 @@ what's still needed, see [`API_STATUS.md`](API_STATUS.md). For the endpoint
 spec the five unbacked modules would need, see
 [`API_REQUIREMENTS.md`](API_REQUIREMENTS.md).
 
-**Last updated:** 2026-07-31 (session 7 — dropped the dead Bookings tab, SOS moved into the nav bar)
+**Last updated:** 2026-07-31 (session 7 — guide-2 audit, operator/admin
+consoles, real maps, /bookings removed, SOS moved into the nav bar)
 
 ---
 
@@ -92,15 +93,15 @@ Working convention established across every screen so far:
 
 | Route | Status | Notes |
 | --- | --- | --- |
-| `/` (Home) | ✅ Real data | Quick Access grid (Emergency removed — reachable via bottom nav SOS/TopNav instead), Featured Destinations from `GET /destinations`, Today's Deals (static design content, no deals backend exists) |
-| `/explore` | ✅ Real data | Tours + Destinations; category pills only "All" populated |
-| `/explore/:slug` (Tour Detail) | ✅ Real data + booking | Full booking flow: select departure → seats → Book Now. Reviews list (`GET /tours/:id/reviews`) below departures |
+| `/` (Home) | ✅ Real data | Quick Access grid (Emergency removed — reachable via bottom-nav SOS / TopNav instead), Featured Destinations from `GET /destinations` |
+| `/explore` | ✅ Real data + map | Tours + Destinations; category pills only "All" populated. **Real MapLibre map** pinning every destination with coordinates — click a pin to filter the list; "Near me" sorts by distance (opt-in) |
+| `/explore/:slug` (Tour Detail) | ✅ Real data + booking + map | Full booking flow: select departure → seats → Book Now. Reviews list (`GET /tours/:id/reviews`) below departures. **Location map** + Directions deep-link when the destination has coordinates |
 | `/bookings/:reference` (Booking Detail) | ✅ Real data + payment | Paystack checkout opens in a **separate tab** (page stays alive behind it; auto-refetches on tab focus + socket), manual verify fallback, Cancel booking (with inline confirm) for PENDING/CONFIRMED — verified end-to-end against the live API |
 | `/payments/callback` | ✅ Built | Handles Paystack redirect; best-guess URL, see below |
 | `/login`, `/register` | ✅ Real, verified E2E | Register matches a captured Figma screen. Login links to password recovery |
 | `/forgot-password` | ✅ Real, verified E2E | `POST /auth/forgot-password`. Success copy says "if an account exists" — the endpoint always 200s to prevent account enumeration |
 | `/reset-password?token=` | ✅ Real, verified E2E | `POST /auth/reset-password`. Guards a missing/blank token with a "request a new link" screen; validates length + match client-side |
-| `/trips` (My Trips / "My Bookings") | ⚠️ Built, unverified happy path | Real data via `GET /bookings/me`, but that endpoint 500s (see below) — only the error/retry state has been visually confirmed |
+| `/trips` (My Trips / "My Bookings") | ✅ Real data, verified | `GET /bookings/me` **no longer 500s** — real cards confirmed in-browser with correct GHS amounts. The single bookings screen now that `/bookings` is gone |
 | `/itineraries` | ✅ Real data, verified E2E | AI trip planner. Generate form + saved list (`POST /itineraries/generate`, `GET/DELETE /itineraries`). Reached from Home's Quick Access |
 | `/itineraries/:id` | ✅ Real data, verified E2E | Day-by-day plan grouped by morning/afternoon/evening; `bookable` items deep-link to `/explore/:slug` — followed in-browser through to a real bookable departure |
 | `/profile` | ✅ Real data, verified E2E | Header + settings menu from a user screenshot |
@@ -114,44 +115,41 @@ Working convention established across every screen so far:
 | `/transport` | ✅ Built from screenshot | Extended to match a fuller "Transport details" screenshot: Estimated Fare, Find a Driver, Available Drivers Nearby. No backend to wire, no mock data beyond the design's own content |
 | `/transport/active-ride` | ✅ Built from screenshot | The design's own "View Active Ride (Demo)" preview screen (matches "find-a-driver" screenshot) — static map illustration, driver card, Chat/Call/Cancel. Cancel navigates back to `/transport`; Chat/Call are inert |
 | `/emergency` | ✅ Built from screenshot | SOS trigger, Quick Actions grid, Nearest Medical Facilities list — matches user-supplied screenshot. UI-only, no backend for this module |
+| `/bookings` (list) | 🗑️ Removed | Was a placeholder duplicating `/trips`. Now redirects to `/trips`; the nav tab and footer link are gone. `/bookings/:reference` is unaffected |
+| `/operator` | ⚠️ Built, unverifiable | Operator console: create/edit tour, hero-image upload, add departures, submit for review. **No OPERATOR account exists**, so no write path is confirmed |
+| `/admin` | ⚠️ Built, unverifiable | Approve/suspend a tour by id. No moderation-queue endpoint exists, so there's no list to show |
+| `/admin/destinations` | ⚠️ Built, unverifiable | Full destinations CRUD incl. the lat/lng the maps use. Fully functional *shape* (reads are unfiltered), but needs an ADMIN account to confirm |
 
 ## Backend capabilities not yet used by the frontend
 
-Reconciled against `docs/frontend-integration-guide.md` (the backend
-team's integration doc — read that file for full details). The core
-contract already matches what `src/lib/api/` implements (envelope,
-pagination, base URL/`/api/v1` prefix, auth flow, `BookingStatus`
-enum). Gaps found:
+**Audited exhaustively against the integration guide on 2026-07-31.**
+`docs/frontend-integration-guide-2.md` is **byte-identical** to
+`frontend-integration-guide.md` (`diff` returns nothing) — there are no
+"new" endpoints in guide 2.
 
-1. **AI Itinerary Planner is a real, working backend feature with zero
-   frontend integration.** `POST /itineraries/generate` (+ list/get/
-   delete) plans a real day-by-day trip grounded in actual APPROVED
-   tours and deep-links bookable items via `tourId`/`tourSlug`. There
-   is no `src/lib/api/itineraries.ts` — `src/types/itinerary.ts` is
-   just the old pre-integration SRS placeholder model, unrelated to
-   the real API shape. Biggest single opportunity here: a real,
-   usable feature nobody's built UI for.
-2. **No real-time updates.** The guide's whole booking→payment→
-   confirmation flow is designed around two Socket.IO namespaces
-   (`/bookings` for `booking.status_changed`, `/availability` for
-   live seat counts) specifically so the frontend doesn't have to
-   poll. No `socket.io-client` dependency exists in this repo — the
-   current payment flow relies on the "manual verify fallback"
-   instead (see known issue #3 below). Wiring the socket would
-   directly clean up that exact pain point.
-3. ~~Cancel-booking is half-wired.~~ **Fixed** — `BookingDetailPage.tsx`
-   now has a Cancel booking action (inline "are you sure" confirm, no
-   native dialogs) for PENDING/CONFIRMED bookings, calling the
-   already-existing `cancelBooking$()`. Verified end-to-end against
-   the live API with a real booking (PENDING → CANCELLED).
-4. **Minor type mismatch.** `types.ts`'s `DepartureStatus` is
-   `'SCHEDULED' | 'CLOSED' | 'CANCELLED'`; the guide's `Departure`
-   shape only lists `'SCHEDULED' | 'CANCELLED'`. Worth confirming
-   with the backend whether `CLOSED` is real or stale.
+**Every endpoint in the guide now has a client function.** The remaining
+gaps are backend-side, not frontend-side:
+
+1. **No `GET /tours/mine`.** `GET /tours` and `/tours/:slug` are
+   `APPROVED`-only, so an operator cannot read back a tour they just
+   created (it's a `DRAFT`). `/operator` works around this by remembering
+   the API's own create response in `localStorage`
+   (`src/lib/operatorTourStore.ts`), labelled as device-local. Delete that
+   file when the endpoint lands. See `API_REQUIREMENTS.md` §7b.1.
+2. **No moderation queue.** Nothing lists `PENDING_REVIEW` tours, so
+   `/admin` can only act on a pasted tour id. §7b.2.
+3. **`POST /uploads/image` is OPERATOR/ADMIN only**, so a TOURIST can't set
+   an avatar except from an external URL. The guide flags this itself
+   (§10.1). §7b.4.
+4. **Bookings embed an undocumented `item`** (`id`, `slug`, `title`,
+   `imageUrl`, `startsAt`). It's typed in `types.ts` but not consumed yet —
+   `TripsPage` still reconstructs the tour title by cross-referencing every
+   tour's departures, an O(n) join that `item.title` makes unnecessary.
+   Best remaining cleanup in the codebase.
 
 ## Known backend issues (not fixable from the frontend)
 
-Items 1 and 2 were **re-confirmed on 2026-07-31** — both still broken.
+Re-checked on 2026-07-31 (session 7).
 
 1. **CORS is unconfigured** — zero `Access-Control-Allow-Origin` headers
    on any response, even with a browser `Origin` set. Blocks every
@@ -159,16 +157,21 @@ Items 1 and 2 were **re-confirmed on 2026-07-31** — both still broken.
    `curl -D -` (`vary: Origin` *is* sent, so the server is evaluating the
    origin and rejecting it). The dev Vite proxy is a workaround for local
    development only.
-2. **`GET /bookings/me` reliably 500s**, even for an account with a real
-   booking (confirmed via `curl` directly, not just in-app). Originally
-   thought to be an empty-list edge case; it isn't — it also 500s for
-   every documented `status` filter value. This blocks verifying
-   `/trips`'s real card-rendering happy path.
-3. **`POST /payments/initiate`** — was 500ing consistently, then
+2. ~~**`GET /bookings/me` reliably 500s**~~ — **fixed.** It returns real
+   paginated data now, and `/trips`'s card-rendering happy path is
+   confirmed in a browser.
+3. **Money fields contradict the guide.** The guide specifies integer
+   **minor** units; the API sends **major** units under different names —
+   `price: 80` (not `priceMinor`) on tours, `total: 80` (not `totalMinor`)
+   on bookings. This rendered a literal `GHSNaN` on three screens. The
+   frontend now normalises both shapes at the boundary
+   (`src/lib/api/money.ts`) and accepts whichever arrives, so a backend fix
+   needs no coordinated release. See `API_REQUIREMENTS.md` §7b.3.
+4. **`POST /payments/initiate`** — was 500ing consistently, then
    succeeded once during testing (real redirect to a genuine Paystack
    test-mode checkout, correct amount/customer). Unclear if it's fixed
    or intermittent. Re-test before relying on it.
-4. **Intermittent 503s** generally (Render free-tier cold starts) — the
+5. **Intermittent 503s** generally (Render free-tier cold starts) — the
    frontend already handles this gracefully via `useApiResource`'s
    loading/error/retry states; just don't be surprised by it.
 
@@ -203,6 +206,34 @@ endpoint exists to clean them up):
   `PENDING → CONFIRMED`) and `TourDetailPage` (live `seatsLeft`).
   *Known limitation:* the handshake uses whatever access token was
   current at connect time and won't itself trigger the REST refresh flow.
+- **Maps are MapLibre GL, lazy-loaded, over OpenFreeMap tiles.**
+  `src/components/map/MapView.tsx` is a thin wrapper over MapLibre's
+  imperative API (no `react-map-gl`). Three things about it are load-bearing
+  and were each found the hard way — see DEVELOPMENT_LOG session 7:
+  1. **Tiles are OpenFreeMap Liberty**, not MapLibre's `demotiles`, which is
+     country-outlines-only and blank at city zoom.
+  2. **`optimizeDeps.exclude: ['maplibre-gl']` in `vite.config.ts` is
+     required.** Without it MapLibre's Web Worker 404s under Vite's dep
+     pre-bundling, and it fails *convincingly*: style, sprites and raster
+     tiles all load on the main thread, so the map looks alive while
+     fetching zero vector tiles. Don't remove that exclude.
+  3. **Readiness comes from `styledata`, not `load`.** `load` also waits on
+     every visible tile, so a stalled source leaves it pending forever —
+     which pins the skeleton over a working map.
+  It's `React.lazy`'d at both call sites (~950 kB), and its CSS is imported
+  inside the component so it splits into the same chunk. Only
+  `Destination.lat/lng` has real coordinates; no other module gets a map,
+  because no other module has coordinates.
+- **Money is normalised at the API boundary** (`src/lib/api/money.ts`). The
+  guide says minor units, the API sends major units under different names.
+  `tours.ts` and `bookings.ts` accept either and always emit the guide's
+  `priceMinor`/`totalMinor`. Read money through those; don't reach for
+  `price`/`total` in a component.
+- **Role-gated routes use `RoleGate`** (`src/components/layout/RoleGate.tsx`)
+  and `navTabsFor(role)`. It's presentation only — the API enforces roles
+  server-side — and it renders inline rather than redirecting, because a
+  redirect races the `GET /users/me` fetch and would bounce a real operator
+  on every hard refresh.
 - **`apiRequest$` accepts `timeoutMs`** for calls expected to be slow.
   Only `generateItinerary$` sets one (120s) — the AI planner is
   synchronous and **measured at ~66s**, and browser `fetch` has no
@@ -240,7 +271,7 @@ endpoint exists to clean them up):
 - **Layout**: `AppLayout` is mobile-first (`max-w-md`), widening at
   `md:`/`lg:` into a top-nav desktop layout (`TopNav` replaces
   `BottomNav`). `transform-gpu` on the layout root makes it the
-  containing block for `position: fixed` children (nav, SOS button,
+  containing block for `position: fixed` children (nav,
   sticky booking bar) so they stay anchored to that column at any
   breakpoint instead of the full viewport.
 - **Shared auth state** (`src/lib/auth.tsx` + `src/hooks/useAuth.ts`).
@@ -276,17 +307,20 @@ endpoint exists to clean them up):
 
 ## Open questions (need the user, not guessable)
 
-- **Resolved (session 7):** the Calendar-icon "Bookings" tab was a dead
-  placeholder duplicating `/trips` (a screenshot titled "My Bookings"
-  turned out to actually be the `/trips` screen), and the backend has no
-  endpoint shape that would make it a distinct feature (no cross-user
-  booking listing, no "join a booking"). Removed the tab; SOS now sits in
-  its old nav slot as a raised center button instead of floating over
-  content — see `DEVELOPMENT_LOG.md` session 7 for the full rationale.
-  This is an intentional, user-approved departure from the Figma bottom
-  nav (which has 5 tabs including Calendar/Bookings).
+- ~~**What is `/bookings` supposed to show?**~~ **Resolved 2026-07-31:**
+  nothing distinct — the user confirmed it duplicated `/trips`. The screen
+  and its nav tab are deleted; `/bookings` redirects to `/trips`. SOS now
+  sits in the old Bookings nav slot as a raised center button instead of
+  floating over content — an intentional Figma deviation (FR-EMRG-08);
+  see `DEVELOPMENT_LOG.md` session 7.
+- **Can the backend seed an OPERATOR and an ADMIN account?** `/operator`,
+  `/admin` and `/admin/destinations` are built and type-check, but not one
+  of their write paths has been exercised against the live API because no
+  such credentials exist. This is the single biggest unverified surface in
+  the app.
 - **Figma reference still needed for:** none of the 6 SRS modules — all
-  have at least a built screen now.
+  have at least a built screen now. Remaining open item is `/bookings`
+  (see above).
   Ask the user for screenshots or try the live Figma prototype (see
   below) before designing these from scratch.
 
@@ -305,21 +339,22 @@ Note: the mouse wheel doesn't reliably scroll the Figma prototype's
 iframe — drag the visible right-side scrollbar thumb instead
 (`left_click_drag`).
 
-## Known API-layer bugs (found 2026-07-31, not yet fixed)
+## Known API-layer bugs — all fixed 2026-07-31 (session 7)
 
-Found while auditing against the backend integration guide; left alone
-because that session was scoped to itineraries + sockets.
+Kept for the record; nothing here is outstanding.
 
-1. **`listMyBookings$` filter enum is wrong** (`src/lib/api/bookings.ts`).
+1. ~~**`listMyBookings$` filter enum is wrong**~~ — fixed (`BookingListFilter`).
+   Original note: (`src/lib/api/bookings.ts`).
    It types `status` as `BookingStatus` (`PENDING`/`CONFIRMED`/…), but the
    API only accepts `upcoming | completed | cancelled` — `?status=PENDING`
    returns a `400`. Harmless *today* only because `TripsPage` calls it with
    no argument and filters client-side; it would break the moment anyone
    passes the filter.
-2. `verifyPayment$` returns `unknown` — the guide defines a real `Payment`
+2. ~~`verifyPayment$` returns `unknown`~~ — fixed; `Payment` is typed. — the guide defines a real `Payment`
    shape (`providerRef`, `status`, `amountMinor`, `currency`).
-3. `DepartureStatus` includes a `CLOSED` member the spec doesn't have.
-4. **Reviews are dead code.** `listTourReviews$`/`createReview$` are written
+3. ~~`DepartureStatus` includes a `CLOSED` member~~ — removed.
+4. ~~**Reviews are dead code.**~~ **This note was wrong** — `TourReviews.tsx`
+   and `WriteReview.tsx` both consume them. Original note: `listTourReviews$`/`createReview$` are written
    and exported but nothing calls them. `TourDetailPage` shows
    `ratingAvg`/`ratingCount` without ever listing the reviews behind them,
    and there's no way to review a `COMPLETED` booking. This is the largest
@@ -327,13 +362,16 @@ because that session was scoped to itineraries + sockets.
 
 ## Immediate next steps (in rough priority order)
 
-1. Build the **Reviews UI** (see bug 4 above) — the API client is already
-   written, so this is UI-only work against a working backend.
-2. Re-test `POST /payments/initiate` and `GET /bookings/me` — if fixed,
-   verify `/trips`'s real card rendering (currently unconfirmed) and
-   confirm the live `PENDING → CONFIRMED` socket transition end-to-end
-   with a real Paystack test checkout.
-3. Fix API-layer bugs 1–3 above.
+1. **Get an OPERATOR + ADMIN account from the backend team** and verify the
+   two consoles end to end: create tour → upload hero image → add departure
+   → submit → (as admin) approve → confirm it appears in public `/explore`.
+2. **Simplify `TripsPage`** to use the `item.title` bookings already
+   return, deleting the O(n) departures join.
+3. Re-test `POST /payments/initiate`, and confirm the live
+   `PENDING → CONFIRMED` socket transition with a real Paystack test
+   checkout — the one remaining unverified tourist flow.
+4. Send `API_REQUIREMENTS.md` §7b to the backend team (five small, concrete
+   fixes to a vertical that already ships).
 
 (Emergency, Flights, Hotels, Food/Drinks, and Transport are all built from
 screenshots already — see the route inventory above. AI Itinerary Planner
