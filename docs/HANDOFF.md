@@ -93,7 +93,8 @@ Working convention established across every screen so far:
 | `/flights/results` | ✅ Built from screenshot | "Flight options" screen — 4 static flight offer cards (matches design), filter pills, Select buttons. UI-only, results don't reflect the (also inert) search form inputs |
 | `/hotels` | ✅ Built from screenshot | "Find a Place to Stay" search + category pills + hotel list. UI-only, no backend for this module |
 | `/hotels/:slug` | ✅ Built from screenshot | Full detail for Labadi Beach Hotel (matches "Hotel details" screenshot: amenities, room picker, reviews, sticky Reserve bar). Coconut Grove Hotel only had list-view data in the screenshot, so its detail page shows an honest "no rooms/reviews yet" empty state rather than invented data |
-| `/food` | 🟡 Placeholder | `PlaceholderPage` only — no Figma capture yet, no backend either |
+| `/food` | ✅ Built from screenshot | "Food & Drinks" search, price/cuisine/dietary filters (cuisine filter is real, filtering the static list), View on Map, restaurant list. UI-only, no backend for this module |
+| `/food/:slug` | ✅ Built from screenshot | Full detail for Asanka Local (matches "food-detail" screenshot: tags, Menu/Reserve/Reviews/Info tabs, menu sections, sticky Reserve a Table bar). The other 3 restaurants only had list-view data, so their Menu tab (and all tabs for them) shows an honest empty state |
 | `/transport` | 🟡 UI built, no data | Matches a captured Figma screen; no backend to wire, no mock data per user's call |
 | `/emergency` | ✅ Built from screenshot | SOS trigger, Quick Actions grid, Nearest Medical Facilities list — matches user-supplied screenshot. UI-only, no backend for this module |
 | `/bookings` (list, Calendar nav tab) | 🟡 Placeholder, unresolved | See "Open questions" — may or may not be a distinct screen from `/trips` |
@@ -167,7 +168,9 @@ endpoint exists to clean them up):
   screen (confirmed with the user — its own bottom nav highlighted "My
   Trips"). `/bookings` remains an unresolved placeholder with no Figma
   evidence of what it's for, if anything distinct.
-- **Figma reference still needed for:** Food.
+- **Figma reference still needed for:** none of the 6 SRS modules — all
+  have at least a built screen now. Remaining open item is `/bookings`
+  (see above).
   Ask the user for screenshots or try the live Figma prototype (see
   below) before designing these from scratch.
 
@@ -192,6 +195,4 @@ iframe — drag the visible right-side scrollbar thumb instead
 2. Re-test `POST /payments/initiate` and `GET /bookings/me` — if fixed,
    verify `/trips`'s real card rendering (currently unconfirmed) and
    re-confirm the Paystack payment flow.
-3. Food — get Figma/screenshot reference, same pattern as
-   Emergency/Transport/Flights/Hotels once it exists.
-4. Consider shared auth state (see "Known gap" above).
+3. Consider shared auth state (see "Known gap" above).
