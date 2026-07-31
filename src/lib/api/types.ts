@@ -274,3 +274,145 @@ export interface GenerateItineraryInput {
   partySize?: number; // 1-20, defaults to 1 server-side
   interests?: string[]; // up to 10, each 1-40 chars
 }
+
+// --- Reservations (Stays, Flights, restaurant Tables) ---
+// A second, more general booking concept alongside Booking (Tours-only):
+// same lifecycle (PENDING -> CONFIRMED via payment, or straight to
+// CONFIRMED for zero-cost Table reservations), same
+// /reservations/{reference} + .../cancel endpoints regardless of `type`.
+// See reservations.ts for get/cancel; stays.ts/flights.ts/restaurants.ts
+// each create one via their own booking endpoint.
+export type ReservationType = 'STAY' | 'FLIGHT' | 'TABLE';
+export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+
+// Verified against real responses for all three types -- `id`/`slug` are
+// STAY/TABLE only, `endsAt` is STAY/FLIGHT only (a table reservation has
+// no end time), `imageUrl` is STAY/TABLE only (flights have no photo).
+export interface ReservationItem {
+  id?: string;
+  slug?: string;
+  title: string;
+  subtitle?: string;
+  imageUrl?: string;
+  startsAt?: string;
+  endsAt?: string;
+}
+
+export interface Reservation {
+  reference: string;
+  type: ReservationType;
+  status: ReservationStatus;
+  totalMinor: number;
+  currency: string;
+  createdAt: string;
+  item?: ReservationItem;
+}
+
+// --- Stays (module M3 — Hotels) ---
+
+export type StayCategory = 'HOTEL' | 'VILLA' | 'HOSTEL' | 'APARTMENT';
+
+export interface Stay {
+  id: string;
+  slug: string;
+  name: string;
+  category: StayCategory;
+  location: string;
+  lat: number;
+  lng: number;
+  distanceKm?: number;
+  stars: number;
+  ratingAvg: number;
+  ratingCount: number;
+  fromPriceMinor: number;
+  currency: string;
+  amenities: string[];
+  images: string[];
+  heroImageUrl?: string;
+  description: string;
+}
+
+export interface Room {
+  id: string;
+  name: string;
+  maxGuests: number;
+  bed: string;
+  pricePerNightMinor: number;
+  available: boolean;
+}
+
+export interface StaysQuery {
+  page?: number;
+  limit?: number;
+  q?: string;
+  category?: StayCategory;
+  minPrice?: number;
+  maxPrice?: number;
+  lat?: number;
+  lng?: number;
+  guests?: number;
+}
+
+export interface BookStayInput {
+  roomId: string;
+  checkIn: string; // ISO date-time
+  checkOut: string; // ISO date-time
+  guests: number;
+}
+
+// --- Flights (module M2) ---
+
+export type TripType = 'ONE_WAY' | 'RETURN' | 'MULTI_CITY';
+export type CabinClass = 'ECONOMY' | 'PREMIUM_ECONOMY' | 'BUSINESS' | 'FIRST';
+
+export interface Airport {
+  code: string;
+  name: string;
+  city: string;
+  country: string;
+}
+
+export interface Airline {
+  code: string;
+  name: string;
+  logoUrl: string | null;
+}
+
+export interface FlightSegment {
+  origin: string;
+  destination: string;
+  departsAt: string;
+  arrivesAt: string;
+  flightNumber: string;
+  durationMinutes: number;
+}
+
+export interface FlightOffer {
+  offerId: string;
+  airline: Airline;
+  segments: FlightSegment[];
+  stops: number;
+  cabin: CabinClass;
+  totalMinor: number;
+  currency: string;
+  baggageKg?: number;
+  refundable: boolean;
+  amenities: string[];
+  expiresAt: string; // book before this or the fare is stale
+}
+
+export interface SearchFlightsInput {
+  tripType: TripType;
+  origin: string;
+  destination: string;
+  date: string; // ISO date-time
+  passengers: { adults: number; children?: number; infants?: number };
+  cabin: CabinClass;
+  sort?: string; // 'price' | '-price' | 'departsAt'
+}
+
+export interface FlightSearchResult {
+  searchId: string;
+  expiresAt: string;
+  offers: FlightOffer[];
+}

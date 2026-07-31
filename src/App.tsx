@@ -21,6 +21,7 @@ import { RegisterPage } from '@/modules/auth/pages/RegisterPage';
 import { ForgotPasswordPage } from '@/modules/auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from '@/modules/auth/pages/ResetPasswordPage';
 import { BookingDetailPage } from '@/modules/bookings/pages/BookingDetailPage';
+import { ReservationDetailPage } from '@/modules/reservations/pages/ReservationDetailPage';
 import { ItinerariesPage } from '@/modules/itineraries/pages/ItinerariesPage';
 import { ItineraryDetailPage } from '@/modules/itineraries/pages/ItineraryDetailPage';
 import { PaymentCallbackPage } from '@/modules/payments/pages/PaymentCallbackPage';
@@ -58,6 +59,7 @@ function App() {
             The detail route below is a different screen and stays. */}
         <Route path={ROUTES.bookings} element={<Navigate to={ROUTES.trips} replace />} />
         <Route path={`${ROUTES.bookings}/:reference`} element={<BookingDetailPage />} />
+        <Route path={`${ROUTES.reservations}/:reference`} element={<ReservationDetailPage />} />
         <Route path={ROUTES.itineraries} element={<ItinerariesPage />} />
         <Route path={`${ROUTES.itineraries}/:id`} element={<ItineraryDetailPage />} />
         {/* Role-gated consoles. RoleGate is presentation only — it keeps
@@ -87,9 +89,15 @@ function App() {
             </RoleGate>
           }
         />
-        <Route path={ROUTES.profile} element={<ProfilePage />} />
-        <Route path={ROUTES.profilePersonalInfo} element={<PersonalInfoPage />} />
-        <Route path={ROUTES.profileEmergencyContacts} element={<EmergencyContactsPage />} />
+        {/* Nested so ProfilePage's useOutlet() can render the selected row's
+            detail next to the settings list on desktop (a master-detail
+            layout), while mobile still gets the old full-page drill-down —
+            see ProfilePage.tsx. Must stay nested; a sibling route here
+            leaves useOutlet() with nothing to render. */}
+        <Route path={ROUTES.profile} element={<ProfilePage />}>
+          <Route path="personal-info" element={<PersonalInfoPage />} />
+          <Route path="emergency-contacts" element={<EmergencyContactsPage />} />
+        </Route>
         <Route path={ROUTES.paymentCallback} element={<PaymentCallbackPage />} />
       </Route>
 

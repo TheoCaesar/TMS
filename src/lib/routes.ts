@@ -16,6 +16,10 @@ export const ROUTES = {
   // booking detail screen is /bookings/:reference, and /bookings itself
   // redirects to /trips (see App.tsx).
   bookings: '/bookings',
+  // Stay/Flight/Table reservations (the generalized booking concept
+  // alongside Tour bookings above) — detail screen is
+  // /reservations/:reference, same pattern as bookings.
+  reservations: '/reservations',
   itineraries: '/itineraries',
   profile: '/profile',
   profilePersonalInfo: '/profile/personal-info',

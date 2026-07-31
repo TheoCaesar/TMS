@@ -87,10 +87,48 @@ server-side search are all connected:
 
 `src/modules/food/data.ts` was deleted — the screens read the API now.
 
-**Still unwired (3):** `GET /emergency/sos/:alertId` (no SOS-tracking screen
-exists yet), and the two `/reservations/:ref` endpoints have client functions
-(`getReservation$`, `cancelReservation$`) but no screen — reservations don't
-appear in `/trips` because `GET /bookings/me` returns tour bookings only.
+**Still unwired (1):** `GET /emergency/sos/:alertId` (no SOS-tracking screen
+exists yet). The `/reservations/:ref` endpoints now have a screen — see below.
+
+### B2. Flights and Stays wired (2026-07-31)
+
+The API docs were updated with the flights vertical, and the hotels vertical
+shipped under the name `/stays` — both fully wired and verified end-to-end
+against the live backend using `claude.rxjs.test@example.com`:
+
+- `GET /flights/airports?q=` — debounced autocomplete on `/flights`'s
+  From/To fields, real IATA codes (confirmed `ACC`, `LOS`, `LHR`, ...).
+- `POST /flights/search` + `GET /flights/offers/:offerId` — `/flights/results`
+  renders real offers (airline, times, duration, stops, baggage, refundable,
+  amenities, price); sort pills re-search server-side.
+- `POST /flights/offers/:offerId/book` — creates a real `FLIGHT` reservation.
+  Verified: booked `FLT-2026-0003` (Africa World Airlines AW1148, ACC→LOS,
+  GHS 850.00) → `PENDING` → cancelled → `CANCELLED`.
+- `GET /stays` + `/stays/:slug` — `/hotels` search (with server-side `q`/
+  `category` filtering) and `/hotels/:slug` detail, real images and amenities.
+- `GET /stays/:id/rooms?checkIn=&checkOut=&guests=` — live room availability
+  and rates on the detail page, refetched when dates/guests change.
+- `POST /stays/:id/book` — creates a real `STAY` reservation. Verified:
+  booked `STY-2026-0002` (Labadi Beach Hotel, Deluxe Room, 3 nights,
+  GHS 3,600.00) → `PENDING` → cancelled → `CANCELLED`.
+- `GET /reservations/:reference` + `POST /reservations/:reference/cancel` —
+  now have a screen (`/reservations/:reference`), reused by Flights, Stays,
+  and the existing Table reservations. Same Paystack-in-a-tab + socket
+  pattern as `BookingDetailPage`.
+
+**Deltas from `API_REQUIREMENTS.md`'s original spec** (§3/§4 there have the
+full detail): booking is per-module (`POST /flights/offers/:id/book`,
+`POST /stays/:id/book`), not a unified `POST /bookings`; `/stays/:id/rooms`
+takes the stay's **id**, not its slug; `/stays/:id/reviews` was not
+delivered, so the detail page shows `ratingAvg`/`ratingCount` only, no
+review list; money arrived as `total`/`fromPrice`/`pricePerNight` (major
+units), normalised at the boundary same as everywhere else.
+
+**Not appearing in `/trips`:** flight/stay/table reservations are a separate
+concept from tour `Booking`s (`GET /bookings/me` still returns tours only),
+so there's no unified "all my bookings" list — each reservation is only
+reachable via the confirmation redirect after booking. Worth flagging to the
+backend if a combined history view matters.
 
 ### C. Original gap list — pure UI work
 
@@ -101,8 +139,6 @@ appear in `/trips` because `GET /bookings/me` returns tour bookings only.
 | `GET /restaurants/:id/menu` | ✅ sections → items with `price` | Menu tab |
 | `GET /restaurants/:id/availability?date=&partySize=` | ✅ returns bookable `slots[]` | "Reserve a Table" |
 | `POST /restaurants/:id/reserve` | auth | Reserve action |
-| `GET /reservations/:reference` | auth | Reservation detail |
-| `POST /reservations/:reference/cancel` | auth | Cancel a reservation |
 | `GET /emergency/sos/:alertId` | auth | Track a raised SOS |
 | `GET /users/me/emergency-contacts` | ✅ 200 (empty) | Profile → "Emergency Contacts" row |
 | `PUT /users/me/emergency-contacts` | auth | Editing those contacts |
@@ -122,10 +158,12 @@ instead of the API.
 
 ### D. Still static — no endpoint exists at all
 
+**Flights and Hotels/Stays were closed out 2026-07-31** — see the new
+"Flights and Stays wired" section above the legend note, and
+`API_REQUIREMENTS.md` §3/§4 for the delivered-vs-spec deltas.
+
 | Screen | What's missing |
 | --- | --- |
-| `/flights`, `/flights/results` | the whole flights vertical — airports, search, offers, booking |
-| `/hotels`, `/hotels/:slug` | the whole stays vertical — search, rooms, availability, rates, reservation |
 | `/transport`, `/transport/active-ride` | fare quote, driver dispatch, live tracking, ride socket |
 | Explore category pills (Attractions/Restaurants/Hotels) | `Tour` has **no `category` field** — the pills cannot work |
 | Explore "Map View" | destinations carry `lat`/`lng`, but there's no bounds/near query; a map could plot the existing 5 |
@@ -135,12 +173,12 @@ instead of the API.
 
 ### Recommended order
 
-1. **Wire the Food module** (5 endpoints, screens already built) — biggest
-   win per unit of work, and it makes `itemType: 'TABLE'` bookings real.
-2. **Wire `/users/me/emergency-contacts`** — one dead Profile row, two endpoints.
-3. **Switch Explore to `?q=`** — server-side search already exists.
-4. Ask the backend for a `category` on `Tour` so Explore's pills work.
-5. Flights / Hotels / Transport remain genuine backend projects.
+1. ~~Wire the Food module~~ — done.
+2. ~~Wire `/users/me/emergency-contacts`~~ — done.
+3. ~~Switch Explore to `?q=`~~ — done.
+4. ~~Wire Flights and Stays~~ — done 2026-07-31, see B2 above.
+5. Ask the backend for a `category` on `Tour` so Explore's pills work.
+6. Transport remains the one genuine backend project left.
 
 ---
 
@@ -236,13 +274,12 @@ Nothing here is a frontend gap.
 
 ### Entire modules with zero backend
 
+Flights, Hotels/Stays, Food and Emergency are all now backed and wired (see
+B, B2 above) — this table is stale for them, kept only for Transport:
+
 | Screen | Needed |
 | --- | --- |
-| `/flights`, `/flights/results` | flight search (origin, destination, dates, pax, cabin), offers, fares, booking |
-| `/hotels`, `/hotels/:slug` | property search + availability, room types/rates, amenities, reviews, reservation |
-| `/food`, `/food/:slug` | restaurants, cuisine/price/dietary filters, menus, table reservation |
 | `/transport`, `/transport/active-ride` | fare estimate, driver dispatch/matching, live ride tracking, cancel |
-| `/emergency` | facility directory with geo/proximity, SOS dispatch, emergency contacts |
 
 ### Gaps inside the Tours vertical that already exists
 

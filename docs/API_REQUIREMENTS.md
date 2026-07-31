@@ -154,6 +154,19 @@ currently hardcodes all of these. `GET /reference/:set` returning
 
 ## 3. Module M2 — Flights
 
+> ✅ **Delivered 2026-07-31 and wired end-to-end** (`src/lib/api/flights.ts`).
+> Shape differs from this spec in a few ways worth noting for next time:
+> booking is `POST /flights/offers/:offerId/book` (no request body — the
+> offer already encodes passengers/cabin from search time), not a unified
+> `POST /bookings`. `search` takes flat `origin`/`destination`/`date` fields,
+> not a `slices[]` array (so multi-city isn't actually representable yet
+> despite `tripType: 'MULTI_CITY'` existing). Booking returns the same
+> polymorphic **Reservation** (`reference`, `type: 'FLIGHT'`, `status`,
+> `totalMinor`, `item`) used by Stays and Table bookings — see
+> `src/lib/api/reservations.ts` — rather than the Tour-specific `Booking`.
+> Money arrived as major-unit `total`, not `totalMinor`, same as every other
+> module; normalised at the boundary as usual.
+
 **Screens:** `/flights` (search form), `/flights/results` (offer list).
 
 Fares and seat availability are volatile, so use the standard
@@ -210,6 +223,17 @@ planner already signals provider failure.
 ---
 
 ## 4. Module M3 — Hotels / Stays
+
+> ✅ **Delivered 2026-07-31 and wired end-to-end** (`src/lib/api/stays.ts`),
+> named `/stays` in the live API (the frontend's `/hotels` routes are
+> unchanged, just backed by `staysApi` now). Divergence from this spec:
+> `GET /stays/:id/rooms` takes the stay's **id, not slug** (400 "uuid is
+> expected" otherwise) — the detail page fetches the stay by slug first,
+> then rooms by `stay.id`. Booking is `POST /stays/:id/book` and, like
+> Flights, returns a **Reservation** (`type: 'STAY'`), not a Tour `Booking`.
+> `GET /stays/:id/reviews` was **not** delivered — the detail page shows
+> `ratingAvg`/`ratingCount` only, no review list, rather than inventing one.
+> Money arrived as `fromPrice`/`pricePerNight`, not the `Minor` names below.
 
 **Screens:** `/hotels` (search + category pills + list), `/hotels/:slug`
 (gallery, amenity grid, room picker, reviews, sticky Reserve bar).

@@ -9,8 +9,8 @@ what's still needed, see [`API_STATUS.md`](API_STATUS.md). For the endpoint
 spec the five unbacked modules would need, see
 [`API_REQUIREMENTS.md`](API_REQUIREMENTS.md).
 
-**Last updated:** 2026-07-31 (session 7 — guide-2 audit, operator/admin
-consoles, real maps, /bookings removed, SOS moved into the nav bar)
+**Last updated:** 2026-07-31 (session 8 — Flights and Hotels/Stays wired to
+the live API, using the newly-added `/flights` and `/stays` endpoints)
 
 ---
 
@@ -20,11 +20,13 @@ React + TypeScript + Tailwind v4 SPA, built to match a Figma prototype
 ("Voyago") pixel-for-pixel where a screen exists, and wired to a live
 backend (`https://tms-api-m7yf.onrender.com`) wherever the API actually
 supports it. The Figma design shows a full 6-module tourism app (POI,
-Flights, Hotels, Food, Transport, Emergency); **the real backend only
-supports one bookable concept: Tours** (destinations, tours, departures,
-bookings, Paystack payments, reviews, auth/loyalty). That mismatch drives
-most of the architecture — see "Scope reality" below before building
-anything new.
+Flights, Hotels, Food, Transport, Emergency). **As of 2026-07-31 the backend
+supports Tours, Flights, Stays (hotels), Table reservations, and Emergency**
+(destinations, tours, departures, flights, stays, restaurants,
+bookings/reservations, emergency facilities/contacts/SOS, Paystack payments,
+reviews, auth/loyalty). **Transport remains the only module with zero
+backend.** That mismatch drives most of the architecture — see "Scope
+reality" below before building anything new.
 
 All work happens on the `dev` branch. `main` has one commit: the initial
 scaffold baseline. Never commit large batches — one focused commit per
@@ -67,11 +69,15 @@ backend or a same-origin reverse proxy in front of both apps.
 The Figma prototype (`figma.com/make/DbokKeXxurSiFhZQSQ8aJH`, "Voyago
 mobile app prototype") shows six service modules matching the SRS:
 Explore/POI, Flights, Hotels, Food, Transport, Emergency. **The live API
-(`GET /api/docs-json` for the full OpenAPI spec) only implements Tours** —
-Destinations, Tours + Departures, Bookings, Paystack Payments, Reviews,
-plus Auth/Users/Loyalty, an **AI itinerary planner**, and image uploads.
-There is no Flight, Accommodation, Restaurant, Transport-dispatch, or
-Emergency-facility endpoint anywhere in the API.
+(`GET /api/docs-json` for the full OpenAPI spec) now implements five of
+six** — Tours (Destinations, Tours + Departures, Bookings, Paystack
+Payments, Reviews), Flights (`/flights/*`), Stays/Hotels (`/stays/*`),
+Restaurants/Food (`/restaurants/*`), and Emergency (`/emergency/*`) — plus
+Auth/Users/Loyalty, an **AI itinerary planner**, and image uploads. Flights,
+Stays, and Table reservations share a generalized **Reservation** concept
+(`/reservations/:reference`, distinct from the Tour-specific `Booking`) —
+see `src/lib/api/reservations.ts`. **Only Transport has no endpoint anywhere
+in the API.**
 
 Note that the AI planner is itself scoped to Tours: it plans around the
 real `APPROVED` tours in the system, and any tour the model invents is
@@ -86,8 +92,8 @@ Working convention established across every screen so far:
   Attractions/Restaurants/Hotels category filters, or per-type accent
   colors on booking cards), render the UI element but show an honest
   empty/inert state — **never fabricate mock data** to fill a gap.
-- Where a whole module has zero backend (Flights, Hotels, Food,
-  Emergency), it's UI-only with no data layer at all, not even mocked.
+- Where a whole module has zero backend (only Transport, now), it's
+  UI-only with no data layer at all, not even mocked.
 
 ## Route inventory
 
@@ -106,10 +112,11 @@ Working convention established across every screen so far:
 | `/itineraries/:id` | ✅ Real data, verified E2E | Day-by-day plan grouped by morning/afternoon/evening; `bookable` items deep-link to `/explore/:slug` — followed in-browser through to a real bookable departure |
 | `/profile` | ✅ Real data, verified E2E | Header + settings menu from a user screenshot |
 | `/profile/personal-info` | ✅ Real data + save, verified E2E | The one settings row with backend support (`PATCH /users/me`) |
-| `/flights` | ✅ Built from screenshot | Trip type toggle, From/To/dates/passengers/cabin form, Popular Routes — matches user-supplied screenshot. UI-only, no backend for this module |
-| `/flights/results` | ✅ Built from screenshot | "Flight options" screen — 4 static flight offer cards (matches design), filter pills, Select buttons. UI-only, results don't reflect the (also inert) search form inputs |
-| `/hotels` | ✅ Built from screenshot | "Find a Place to Stay" search + category pills + hotel list. UI-only, no backend for this module |
-| `/hotels/:slug` | ✅ Built from screenshot | Full detail for Labadi Beach Hotel (matches "Hotel details" screenshot: amenities, room picker, reviews, sticky Reserve bar). Coconut Grove Hotel only had list-view data in the screenshot, so its detail page shows an honest "no rooms/reviews yet" empty state rather than invented data |
+| `/flights` | ✅ Real data, verified E2E | Trip type toggle, From/To (debounced `GET /flights/airports?q=` autocomplete, real IATA codes), dates/passengers/cabin form. Popular Routes stay hardcoded (no endpoint backs that list) but tap through to real, verified airport codes |
+| `/flights/results` | ✅ Real data, verified E2E | Renders real offers from `POST /flights/search` (airline, times, duration, stops, baggage, refundable, amenities, price); sort pills re-search server-side. Reached only via router state from `/flights` — no GET-by-searchId endpoint exists, so a direct reload shows an honest "search again" prompt instead of resurrecting stale offers. Select → `POST /flights/offers/:id/book` → `/reservations/:reference` |
+| `/hotels` | ✅ Real data, verified E2E | "Find a Place to Stay" — `GET /stays` with server-side `q`/`category` filtering, real images/amenities. Check-in/Check-out/Guests row stays inert (`/stays` list has no date-range params; only per-room availability does, on the detail page) |
+| `/hotels/:slug` | ✅ Real data, verified E2E | `GET /stays/:slug` + live `GET /stays/:id/rooms?checkIn=&checkOut=&guests=` (note: takes the stay's **id**, not slug), refetched on date/guest change. Reserve → `POST /stays/:id/book` → `/reservations/:reference`. No review list (`/stays/:id/reviews` wasn't delivered) — shows real `ratingAvg`/`ratingCount` instead of inventing reviews |
+| `/reservations/:reference` | ✅ Real data + payment, verified E2E | Generalized booking detail for Flight/Stay/Table reservations (`GET`/`POST /reservations/:reference/cancel`) — same Paystack-in-a-tab + socket + inline-cancel pattern as Booking Detail, reused across all three verticals |
 | `/food` | ✅ Built from screenshot | "Food & Drinks" search, price/cuisine/dietary filters (cuisine filter is real, filtering the static list), View on Map, restaurant list. UI-only, no backend for this module |
 | `/food/:slug` | ✅ Built from screenshot | Full detail for Asanka Local (matches "food-detail" screenshot: tags, Menu/Reserve/Reviews/Info tabs, menu sections, sticky Reserve a Table bar). The other 3 restaurants only had list-view data, so their Menu tab (and all tabs for them) shows an honest empty state |
 | `/transport` | ✅ Built from screenshot | Extended to match a fuller "Transport details" screenshot: Estimated Fare, Find a Driver, Available Drivers Nearby. No backend to wire, no mock data beyond the design's own content |
@@ -184,7 +191,7 @@ endpoint exists to clean them up):
 | --- | --- | --- |
 | `claude.integration.test@example.com` | `IntegrationTest123` | Earliest API-shape verification |
 | `claude.ui.test@example.com` | `UiTestPass123` | First UI registration test |
-| `claude.rxjs.test@example.com` | `RxjsTestPass123` | Has a real booking, reference `TUR-2026-0005` (Cape Coast Castle Heritage Tour, 1 seat, GHS 80.00, status PENDING). Full name currently "RxJS Updated User" from a live-edit test. Use this one for anything that needs an existing booking. |
+| `claude.rxjs.test@example.com` | `RxjsTestPass123` | Has a real booking, reference `TUR-2026-0005` (Cape Coast Castle Heritage Tour, 1 seat, GHS 80.00, status PENDING). Full name currently "RxJS Updated User" from a live-edit test. Use this one for anything that needs an existing booking. Also used to verify Stays (`STY-2026-0002`, Labadi Beach Hotel, cancelled) and Flights (`FLT-2026-0003`, ACC→LOS, cancelled) — both cleaned up, CANCELLED. |
 
 ## Architecture quick reference
 
@@ -373,6 +380,7 @@ Kept for the record; nothing here is outstanding.
 4. Send `API_REQUIREMENTS.md` §7b to the backend team (five small, concrete
    fixes to a vertical that already ships).
 
-(Emergency, Flights, Hotels, Food/Drinks, and Transport are all built from
-screenshots already — see the route inventory above. AI Itinerary Planner
-and shared auth state are done too — see "Architecture quick reference".)
+(Flights, Hotels/Stays, Food/Drinks, and Emergency are all wired to real
+data now — see the route inventory above. Transport is the one module
+still built from screenshots with no backend. AI Itinerary Planner and
+shared auth state are done too — see "Architecture quick reference".)

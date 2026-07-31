@@ -2,7 +2,8 @@ import type { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { apiRequest$ } from './client';
 import { toMinorUnits } from './money';
-import type { ApiPage } from './types';
+import { normalizeReservation, type RawReservation } from './reservations';
+import type { ApiPage, Reservation } from './types';
 
 // Food & Drinks (module M4). Listing, detail, menu and availability are
 // public; reserving requires auth.
@@ -52,16 +53,6 @@ export interface Availability {
   date: string;
   partySize: number;
   slots: string[]; // ISO datetimes that can be booked
-}
-
-export interface Reservation {
-  reference: string; // e.g. "TBL-2026-0001"
-  type: 'STAY' | 'FLIGHT' | 'TABLE';
-  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
-  totalMinor: number;
-  currency: string;
-  createdAt: string;
-  item?: Record<string, unknown>;
 }
 
 export interface RestaurantsQuery {
@@ -118,12 +109,6 @@ export function getAvailability$(
   });
 }
 
-type RawReservation = Omit<Reservation, 'totalMinor'> & { totalMinor?: number; total?: number };
-
-function normaliseReservation(raw: RawReservation): Reservation {
-  return { ...raw, totalMinor: toMinorUnits(raw.totalMinor, raw.total) };
-}
-
 export function reserveTable$(
   restaurantId: string,
   input: { at: string; partySize: number },
@@ -131,15 +116,5 @@ export function reserveTable$(
   return apiRequest$<RawReservation>(`/restaurants/${restaurantId}/reserve`, {
     method: 'POST',
     body: input,
-  }).pipe(map(normaliseReservation));
-}
-
-export function getReservation$(reference: string): Observable<Reservation> {
-  return apiRequest$<RawReservation>(`/reservations/${reference}`).pipe(map(normaliseReservation));
-}
-
-export function cancelReservation$(reference: string): Observable<Reservation> {
-  return apiRequest$<RawReservation>(`/reservations/${reference}/cancel`, {
-    method: 'POST',
-  }).pipe(map(normaliseReservation));
+  }).pipe(map(normalizeReservation));
 }
