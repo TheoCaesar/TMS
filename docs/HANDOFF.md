@@ -100,6 +100,41 @@ Working convention established across every screen so far:
 | `/emergency` | ✅ Built from screenshot | SOS trigger, Quick Actions grid, Nearest Medical Facilities list — matches user-supplied screenshot. UI-only, no backend for this module |
 | `/bookings` (list, Calendar nav tab) | 🟡 Placeholder, unresolved | See "Open questions" — may or may not be a distinct screen from `/trips` |
 
+## Backend capabilities not yet used by the frontend
+
+Reconciled against `docs/frontend-integration-guide.md` (the backend
+team's integration doc — read that file for full details). The core
+contract already matches what `src/lib/api/` implements (envelope,
+pagination, base URL/`/api/v1` prefix, auth flow, `BookingStatus`
+enum). Gaps found:
+
+1. **AI Itinerary Planner is a real, working backend feature with zero
+   frontend integration.** `POST /itineraries/generate` (+ list/get/
+   delete) plans a real day-by-day trip grounded in actual APPROVED
+   tours and deep-links bookable items via `tourId`/`tourSlug`. There
+   is no `src/lib/api/itineraries.ts` — `src/types/itinerary.ts` is
+   just the old pre-integration SRS placeholder model, unrelated to
+   the real API shape. Biggest single opportunity here: a real,
+   usable feature nobody's built UI for.
+2. **No real-time updates.** The guide's whole booking→payment→
+   confirmation flow is designed around two Socket.IO namespaces
+   (`/bookings` for `booking.status_changed`, `/availability` for
+   live seat counts) specifically so the frontend doesn't have to
+   poll. No `socket.io-client` dependency exists in this repo — the
+   current payment flow relies on the "manual verify fallback"
+   instead (see known issue #3 below). Wiring the socket would
+   directly clean up that exact pain point.
+3. **Cancel-booking is half-wired.** `cancelBooking$()`
+   (`POST /bookings/:reference/cancel`) already exists in
+   `src/lib/api/bookings.ts`, but `BookingDetailPage.tsx` never calls
+   it — no Cancel button in the UI, only a read-only "Booking
+   cancelled" state once a booking is already cancelled some other
+   way.
+4. **Minor type mismatch.** `types.ts`'s `DepartureStatus` is
+   `'SCHEDULED' | 'CLOSED' | 'CANCELLED'`; the guide's `Departure`
+   shape only lists `'SCHEDULED' | 'CANCELLED'`. Worth confirming
+   with the backend whether `CLOSED` is real or stale.
+
 ## Known backend issues (not fixable from the frontend)
 
 1. **CORS is unconfigured** — zero `Access-Control-Allow-Origin` headers
@@ -196,4 +231,9 @@ iframe — drag the visible right-side scrollbar thumb instead
 2. Re-test `POST /payments/initiate` and `GET /bookings/me` — if fixed,
    verify `/trips`'s real card rendering (currently unconfirmed) and
    re-confirm the Paystack payment flow.
-3. Consider shared auth state (see "Known gap" above).
+3. Wire the Cancel-booking button on Booking Detail — smallest lift of
+   the items in "Backend capabilities not yet used" above.
+4. Build the AI Itinerary Planner — biggest opportunity in "Backend
+   capabilities not yet used" above; needs a new `src/lib/api/
+   itineraries.ts` and UI, likely off Explore or Home.
+5. Consider shared auth state (see "Known gap" above).
