@@ -24,7 +24,6 @@ const columns: { heading: string; links: { label: string; to: string }[] }[] = [
       { label: 'Flights', to: ROUTES.flights },
       { label: 'Local transport', to: ROUTES.transport },
       { label: 'My trips', to: ROUTES.trips },
-      { label: 'Bookings', to: ROUTES.bookings },
     ],
   },
   {

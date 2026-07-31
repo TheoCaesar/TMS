@@ -1,6 +1,6 @@
 import { AlertCircle } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
-import { navTabs } from './navTabs';
+import { navTabsFor } from './navTabs';
 import { ROUTES } from '@/lib/routes';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -18,7 +18,7 @@ export function TopNav() {
         </NavLink>
 
         <nav className="flex flex-1 items-center gap-1">
-          {navTabs.map(({ to, label, end }) => (
+          {navTabsFor(user?.role).map(({ to, label, end }) => (
             <NavLink
               key={to}
               to={to}

@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { HomePage } from '@/pages/HomePage';
 import { TripsPage } from '@/pages/TripsPage';
@@ -42,6 +42,11 @@ function App() {
         <Route path={ROUTES.transportActiveRide} element={<ActiveRidePage />} />
         <Route path={ROUTES.emergency} element={<EmergencyPage />} />
         <Route path={ROUTES.trips} element={<TripsPage />} />
+        {/* /bookings and /trips were the same screen; /trips is the built,
+            wired one ("My Bookings"). The list route redirects rather than
+            404ing so existing links and bookmarks still land somewhere real.
+            The detail route below is a different screen and stays. */}
+        <Route path={ROUTES.bookings} element={<Navigate to={ROUTES.trips} replace />} />
         <Route path={`${ROUTES.bookings}/:reference`} element={<BookingDetailPage />} />
         <Route path={ROUTES.itineraries} element={<ItinerariesPage />} />
         <Route path={`${ROUTES.itineraries}/:id`} element={<ItineraryDetailPage />} />

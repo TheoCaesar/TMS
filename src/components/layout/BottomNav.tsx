@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router-dom';
-import { navTabs } from './navTabs';
+import { navTabsFor, type NavTab } from './navTabs';
+import { useAuth } from '@/hooks/useAuth';
 import { ROUTES } from '@/lib/routes';
 
-function TabLink({ to, label, icon: Icon, end }: (typeof navTabs)[number]) {
+function TabLink({ to, label, icon: Icon, end }: NavTab) {
   return (
     <NavLink
       to={to}
@@ -30,9 +31,11 @@ function TabLink({ to, label, icon: Icon, end }: (typeof navTabs)[number]) {
 // page content uses. Don't reintroduce a transform on an ancestor — that
 // makes `fixed` resolve against the ancestor and the bar scrolls away.
 export function BottomNav() {
-  const half = Math.ceil(navTabs.length / 2);
-  const leftTabs = navTabs.slice(0, half);
-  const rightTabs = navTabs.slice(half);
+  const { user } = useAuth();
+  const tabs = navTabsFor(user?.role);
+  const half = Math.ceil(tabs.length / 2);
+  const leftTabs = tabs.slice(0, half);
+  const rightTabs = tabs.slice(half);
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 md:hidden">
