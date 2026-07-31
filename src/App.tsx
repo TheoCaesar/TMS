@@ -19,6 +19,8 @@ import { EmergencyPage } from '@/modules/emergency/pages/EmergencyPage';
 import { LoginPage } from '@/modules/auth/pages/LoginPage';
 import { RegisterPage } from '@/modules/auth/pages/RegisterPage';
 import { BookingDetailPage } from '@/modules/bookings/pages/BookingDetailPage';
+import { ItinerariesPage } from '@/modules/itineraries/pages/ItinerariesPage';
+import { ItineraryDetailPage } from '@/modules/itineraries/pages/ItineraryDetailPage';
 import { PaymentCallbackPage } from '@/modules/payments/pages/PaymentCallbackPage';
 import { ROUTES } from '@/lib/routes';
 
@@ -41,6 +43,8 @@ function App() {
         <Route path={ROUTES.trips} element={<TripsPage />} />
         <Route path={ROUTES.bookings} element={<BookingsPage />} />
         <Route path={`${ROUTES.bookings}/:reference`} element={<BookingDetailPage />} />
+        <Route path={ROUTES.itineraries} element={<ItinerariesPage />} />
+        <Route path={`${ROUTES.itineraries}/:id`} element={<ItineraryDetailPage />} />
         <Route path={ROUTES.profile} element={<ProfilePage />} />
         <Route path={ROUTES.profilePersonalInfo} element={<PersonalInfoPage />} />
         <Route path={ROUTES.auth.login} element={<LoginPage />} />

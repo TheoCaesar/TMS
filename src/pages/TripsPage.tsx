@@ -5,6 +5,7 @@ import { forkJoin, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { bookingsApi, toursApi, type Booking, type BookingStatus } from '@/lib/api';
 import { useApiResource } from '@/hooks/useApiResource';
+import { Skeleton, SkeletonChip, SkeletonLine, SkeletonRegion } from '@/components/ui/Skeleton';
 import { formatDate, formatMoney, formatTime } from '@/lib/format';
 import { ROUTES } from '@/lib/routes';
 
@@ -124,15 +125,44 @@ export function TripsPage() {
         </div>
       )}
 
+      {/* Mirrors the real booking card exactly: accent edge, icon tile,
+          title, status badge, three meta lines, and the divided action
+          footer — so cards swap in without the list jumping. */}
       {status === 'loading' && (
-        <div className="space-y-3 px-5 md:px-0">
+        <SkeletonRegion
+          label="Loading your bookings"
+          className="space-y-3 px-5 md:grid md:grid-cols-2 md:gap-3 md:space-y-0 md:px-0 lg:grid-cols-3"
+        >
           {Array.from({ length: 2 }, (_, i) => (
             <div
               key={i}
-              className="h-40 animate-pulse rounded-card bg-neutral-100 dark:bg-neutral-900"
-            />
+              className="overflow-hidden rounded-card border-l-4 border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+            >
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <Skeleton className="size-10 shrink-0 rounded-xl" />
+                    <SkeletonLine className="mt-1 w-2/3" />
+                  </div>
+                  <SkeletonChip className="w-20 shrink-0" />
+                </div>
+                <div className="mt-3 space-y-2">
+                  <SkeletonLine className="w-1/2" />
+                  <SkeletonLine className="w-2/5" />
+                  <SkeletonLine className="h-3 w-1/3" />
+                </div>
+              </div>
+              <div className="flex divide-x divide-neutral-100 border-t border-neutral-100 dark:divide-neutral-800 dark:border-neutral-800">
+                <div className="flex flex-1 items-center justify-center py-3">
+                  <SkeletonLine className="w-14" />
+                </div>
+                <div className="flex flex-1 items-center justify-center py-3">
+                  <SkeletonLine className="w-14" />
+                </div>
+              </div>
+            </div>
           ))}
-        </div>
+        </SkeletonRegion>
       )}
 
       {status === 'ready' && filtered.length === 0 && (

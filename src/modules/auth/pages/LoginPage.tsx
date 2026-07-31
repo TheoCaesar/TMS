@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { TextField } from '@/components/ui/TextField';
 import { PasswordField } from '@/components/ui/PasswordField';
 import { authApi, ApiError } from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 import { ROUTES } from '@/lib/routes';
 
 // No Figma screen captured for Login — styled consistently with Register
 // (which does match a captured Figma screen) and the rest of the app.
 export function LoginPage() {
   const navigate = useNavigate();
+  const { refresh } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +21,12 @@ export function LoginPage() {
     setError(null);
     setSubmitting(true);
     authApi.login$({ email, password }).subscribe({
-      next: () => navigate(ROUTES.home),
+      next: () => {
+        // Pull the profile into the shared auth context so the nav reflects
+        // the new session immediately, without a full page reload.
+        refresh();
+        navigate(ROUTES.home);
+      },
       error: (err: unknown) => {
         setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
         setSubmitting(false);

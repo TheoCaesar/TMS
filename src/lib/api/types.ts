@@ -103,6 +103,58 @@ export interface Review {
   createdAt: string;
 }
 
+// --- AI itinerary planner ---
+// Shapes verified against a real POST /itineraries/generate response
+// (Cape Coast, 2 days) rather than the OpenAPI spec, which types `plan` as
+// an opaque object.
+
+export type ItineraryPeriod = 'morning' | 'afternoon' | 'evening';
+
+export type ItineraryItemKind = 'TOUR' | 'MEAL' | 'FREE' | 'TIP';
+
+export interface ItineraryItem {
+  period: ItineraryPeriod;
+  kind: ItineraryItemKind;
+  title: string;
+  description: string;
+  estimatedCostMinor?: number;
+  // The model is only allowed to reference tours that really exist —
+  // invented ones are stripped server-side and downgraded to bookable:false.
+  // tourId/tourSlug are therefore only safe to read when bookable is true.
+  bookable: boolean;
+  tourId?: string;
+  tourSlug?: string;
+}
+
+export interface ItineraryPlanDay {
+  day: number; // 1-based
+  title: string;
+  items: ItineraryItem[];
+}
+
+export interface ItineraryPlan {
+  summary: string;
+  estimatedTotalMinor?: number;
+  notes?: string[];
+  days: ItineraryPlanDay[];
+}
+
+// Note: `days` here is the requested trip length (a number), while
+// `plan.days` is the generated day-by-day array. Both come from the API
+// under that name.
+export interface Itinerary {
+  id: string;
+  title: string;
+  destinationName: string;
+  days: number;
+  budgetMinor?: number;
+  partySize: number;
+  interests: string[];
+  model: string;
+  createdAt: string;
+  plan: ItineraryPlan;
+}
+
 // --- Request payloads ---
 
 export interface RegisterInput {
@@ -143,4 +195,12 @@ export interface InitiatePaymentInput {
 export interface CreateReviewInput {
   rating: number;
   body: string;
+}
+
+export interface GenerateItineraryInput {
+  destination: string; // 2-120 chars
+  days: number; // 1-14
+  budgetMinor?: number; // GHS pesewas, >= 0
+  partySize?: number; // 1-20, defaults to 1 server-side
+  interests?: string[]; // up to 10, each 1-40 chars
 }
