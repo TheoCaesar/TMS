@@ -10,6 +10,7 @@ import { TourDetailPage } from '@/modules/tours/pages/TourDetailPage';
 import { FlightSearchPage } from '@/modules/flights/pages/FlightSearchPage';
 import { FlightResultsPage } from '@/modules/flights/pages/FlightResultsPage';
 import { AccommodationSearchPage } from '@/modules/accommodation/pages/AccommodationSearchPage';
+import { AccommodationDetailPage } from '@/modules/accommodation/pages/AccommodationDetailPage';
 import { FoodDiscoverPage } from '@/modules/food/pages/FoodDiscoverPage';
 import { TransportBookingPage } from '@/modules/transport/pages/TransportBookingPage';
 import { EmergencyPage } from '@/modules/emergency/pages/EmergencyPage';
@@ -29,6 +30,7 @@ function App() {
         <Route path={ROUTES.flights} element={<FlightSearchPage />} />
         <Route path={ROUTES.flightResults} element={<FlightResultsPage />} />
         <Route path={ROUTES.hotels} element={<AccommodationSearchPage />} />
+        <Route path={`${ROUTES.hotels}/:slug`} element={<AccommodationDetailPage />} />
         <Route path={ROUTES.food} element={<FoodDiscoverPage />} />
         <Route path={ROUTES.transport} element={<TransportBookingPage />} />
         <Route path={ROUTES.emergency} element={<EmergencyPage />} />
